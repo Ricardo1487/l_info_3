@@ -1,5 +1,5 @@
 from datetime import date
-from app.Services.loans import (
+from app.services.loans import (
     list_loans,
     create_loan,
     get_loan_by_id,
