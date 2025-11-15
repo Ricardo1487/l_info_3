@@ -19,3 +19,7 @@ diese struktur ist besser weil die tests immer gleich mit erstellt werden und au
 der main branch wird nur selten übernommen, dieser dient als backup
 keine direkt pushs in den main branch 
 alle pushs und aktuelle arbeiten werden in den dev(develop) branch gepusht dieser enthält also alle aktuellen änderungen 
+
+
+
+.env datei ist jetzt vorhanden --> unsere passwörter sind öffentlich, vielleicht nochmal ändern wenn man ins web geht, ersetzten z.b. mit einer env.example. ohne die Kennungen 
