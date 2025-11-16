@@ -3,28 +3,46 @@
 {% block content %}
 <h1>Boxenübersicht</h1>
 
-<table>
-  <tr>
-    <th>Box</th>
-    <th>Ausgabe</th>
-    <th>Rückgabe</th>
-    <th>Status</th>
-    <th>Kontakt</th>
-    <th>Aktion</th>
-  </tr>
+{% if loans %}
+  <table class="loans-table">
+    <thead>
+      <tr>
+        <th>Leih-ID</th>
+        <th>Box</th>
+        <th>Ausgabe (geplant)</th>
+        <th>Rückgabe (geplant)</th>
+        <th>Status</th>
+        <th>Kontakt</th>
+        <th>Aktion</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for loan in loans %}
+        <tr>
+          <td data-label="Leih-ID">{{ loan.id }}</td>
+          <td data-label="Box">{{ loan.box_code }}</td>
+          <td data-label="Ausgabe (geplant)">{{ loan.planned_start_date }}</td>
+          <td data-label="Rückgabe (geplant)">{{ loan.planned_end_date }}</td>
 
-  {% for box in boxen %}
-  <tr>
-    <td data-label="Box">{{ box.id }}</td>
-    <td data-label="Ausgabe">{{ box.ausgabe }}</td>
-    <td data-label="Rückgabe">{{ box.rueckgabe }}</td>
-    <td data-label="Status" class="{{ box.status }}">{{ box.status }}</td>
-    <td data-label="Kontakt">{{ box.email }}</td>
-    <td data-label="Aktion">
-      <a href="{{ url_for('return_box', box_id=box.id) }}">Rückgabe</a>
-    </td>
-  </tr>
-  {% endfor %}
-</table>
+          {# Farbige Statusanzeige über CSS-Klassen #}
+          <td data-label="Status"
+              class="status status-{{ loan.status|lower }}">
+            {{ loan.status }}
+          </td>
+
+          <td data-label="Kontakt">{{ loan.contact_email }}</td>
+
+          <td data-label="Aktion">
+            <a href="{{ url_for('return_box', loan_id=loan.id) }}">
+              Rückgabe
+            </a>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>Aktuell sind keine Leihen vorhanden.</p>
+{% endif %}
 
 {% endblock %}
