@@ -1,23 +1,26 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <<meta name="viewport" content="width=device-width, initial-scale=1.0">
->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>{{ title or "Boxenverwaltung" }}</title>
+
+    <!-- Styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+
 <body>
-    <!-- 🔹 Navigation -->
-    <nav>
+    <!-- Navigation -->
+    <nav class="navbar">
         <a href="{{ url_for('home') }}">Übersicht</a>
         <a href="{{ url_for('new_loan') }}">Neue Leihe</a>
     </nav>
 
-    <!-- 🔹 Hier kommt der Seiteninhalt rein -->
+    <!-- Hauptinhalt -->
     <main>
-        {% block content %}{% endblock %}
+        {% block content %}
+        {% endblock %}
     </main>
 </body>
 </html>
-
-
