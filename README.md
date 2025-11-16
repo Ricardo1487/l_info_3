@@ -23,3 +23,6 @@ alle pushs und aktuelle arbeiten werden in den dev(develop) branch gepusht diese
 
 
 .env datei ist jetzt vorhanden --> unsere passwörter sind öffentlich, vielleicht nochmal ändern wenn man ins web geht, ersetzten z.b. mit einer env.example. ohne die Kennungen 
+
+
+Notiz fürs Backend: Löschen der Boxen sobald sie VOLLSTÄNDIG zurückgegeben sind läuft noch nicht. es gibt dafür den status returned und missing items.
