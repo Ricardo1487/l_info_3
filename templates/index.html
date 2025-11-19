@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Boxenübersicht</h1>
+
+<table>
+  <tr>
+    <th>Bild</th>
+    <th>Box</th>
+    <th>Ausgabe</th>
+    <th>Rückgabe</th>
+    <th>Status</th>
+    <th>Kontakt</th>
+    <th>Aktion</th>
+  </tr>
+
+  {% for box in boxen %}
+  <tr>
+    <td data-label="Bild">
+      <img src="{{ url_for('uploaded_file', filename=box.photo) }}"
+           style="width: 60px; border-radius: 6px;">
+    </td>
+
+    <td data-label="Box">{{ box.id }}</td>
+    <td data-label="Ausgabe">{{ box.ausgabe }}</td>
+    <td data-label="Rückgabe">{{ box.rueckgabe }}</td>
+    <td data-label="Status">{{ box.status }}</td>
+    <td data-label="Kontakt">{{ box.email }}</td>
+
+    <td data-label="Aktion">
+      <a href="{{ url_for('return_box', box_id=box.id) }}">Rückgabe</a>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+
+{% endblock %}

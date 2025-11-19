@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Rückgabe für Box {{ box_id }}</h2>
+
+<form method="post">
+  <label>Rückgabefoto:</label>
+  <input type="file" name="photo"><br>
+  <button type="submit">Rückgabe abschließen</button>
+</form>
+
+{% endblock %}
