@@ -291,5 +291,6 @@ def delete_loan_if_fully_returned(loan_id: int) -> bool:
             {"loan_id": loan_id},
         )
 
+
         session.commit()
         return True

@@ -52,3 +52,4 @@ def create_box(box_code: Optional[str] = None, description: Optional[str] = None
         new_id = result.scalar_one()
         session.commit()
         return new_id
+#seeyuuuh
