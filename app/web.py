@@ -7,6 +7,8 @@ from app.services.loans import (
     create_loan,
     get_loan_by_id,
     return_loan,
+    delete_loan_if_fully_returned,
+    mark_overdue_loans,
 )
 
 app = Flask(__name__)
@@ -17,6 +19,8 @@ def home():
     """
     Übersichtsseite: zeigt alle aktuellen Leihen aus der Datenbank.
     """
+    mark_overdue_loans(date.today())
+
     loans = list_loans()  # direkt aus Supabase über den Service
     return render_template("index.html", title="Übersicht", loans=loans)
 
@@ -97,6 +101,11 @@ def return_box(loan_id: int):
             actual_end_date=actual_end,
             closed_by_user_id=closed_by_user_id,
         )
+
+        #überprüfen ob der loan gelöscht werden kann
+        delete_loan_if_fully_returned(loan_id)
+
+
         return redirect(url_for("home"))
 
     # GET: Rückgabe-Template anzeigen
