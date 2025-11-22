@@ -8,7 +8,7 @@ load_dotenv()
 DB_USER = os.getenv("DATABASE_USER")
 DB_PASSWORD = os.getenv("DATABASE_PASSWORD")
 DB_HOST = os.getenv("DATABASE_HOST")
-DB_PORT = os.getenv("DATABASE_PORT")
+DB_PORT = os.getenv("DATABASE_PORT", "5432")
 DB_NAME = os.getenv("DATABASE_NAME")
 
 DATABASE_URL = (
@@ -17,6 +17,17 @@ DATABASE_URL = (
     f"?sslmode=require"
 )
 
-engine = create_engine(DATABASE_URL, echo=False, future=True)
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"sslmode": "require"},
+    pool_pre_ping=True,
+    pool_recycle=300,
+    pool_size=5,
+    max_overflow=10
+)
 
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+SessionLocal = sessionmaker(
+    bind=engine,
+    autoflush=False,
+    autocommit=False
+)
