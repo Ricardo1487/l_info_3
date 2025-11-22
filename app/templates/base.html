@@ -1,26 +1,45 @@
 <!DOCTYPE html>
-<html lang="de" data-theme="dark">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>{{ title or "Boxenverwaltung" }}</title>
 
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 
-<body>
+<body class="app-body">
+    <!-- Top-Navigation -->
     <nav class="navbar">
         <div class="nav-left">
-            <span class="logo">📦 Boxenverwaltung</span>
+            <div class="logo-icon">📦</div>
+            <div class="logo-text">
+                <span class="logo-title">Boxenverwaltung</span>
+                <span class="logo-subtitle">Labor • Ausleihe</span>
+            </div>
         </div>
         <div class="nav-links">
-            <a href="{{ url_for('home') }}">Übersicht</a>
-            <a href="{{ url_for('new_loan') }}">Neue Leihe</a>
+            <a href="{{ url_for('home') }}" class="nav-link">Übersicht</a>
+            <a href="{{ url_for('new_loan') }}" class="nav-link nav-link-primary">Neue Leihe</a>
         </div>
     </nav>
 
-    <main>
+    <!-- Hauptinhalt -->
+    <main class="app-main">
         {% block content %}{% endblock %}
     </main>
+
+    <!-- Bottom Navigation (nur auf Handy sichtbar) -->
+    <nav class="bottom-nav">
+        <a href="{{ url_for('home') }}" class="bottom-nav-item">
+            <span class="bottom-nav-icon">🏠</span>
+            <span class="bottom-nav-label">Übersicht</span>
+        </a>
+        <a href="{{ url_for('new_loan') }}" class="bottom-nav-item">
+            <span class="bottom-nav-icon">➕</span>
+            <span class="bottom-nav-label">Neue Leihe</span>
+        </a>
+    </nav>
 </body>
 </html>
