@@ -2,39 +2,45 @@
 
 {% block content %}
 
-  <section class="page-header">
-      <h1 class="page-title">Neue Leihe</h1>
-      <p class="page-subtitle">Box ausgeben und Rückgabedatum festlegen.</p>
-  </section>
+<section class="page-header">
+    <h1 class="page-title">Neue Leihe</h1>
+</section>
 
-  <section class="card">
-      <form action="{{ url_for('save_loan') }}" method="post" class="form">
+<section class="card">
 
-          <div class="form-group">
-              <label for="box_id">Box-ID</label>
-              <input id="box_id" type="text" name="box_id" required placeholder="z. B. 1">
-          </div>
+<form action="{{ url_for('save_loan') }}" method="post" enctype="multipart/form-data" class="form">
 
-          <div class="form-group">
-              <label for="email">Kontakt-E-Mail</label>
-              <input id="email" type="email" name="email" required placeholder="student@th-koeln.de">
-          </div>
+    <div class="form-group">
+        <label for="box_code">Box-Code</label>
+        <input id="box_code" name="box_code" type="text" placeholder="BOX-001" required>
+    </div>
 
-          <div class="form-group-inline">
-              <div class="form-group">
-                  <label for="ausgabe">Ausgabedatum</label>
-                  <input id="ausgabe" type="date" name="ausgabe" required>
-              </div>
-              <div class="form-group">
-                  <label for="rueckgabe">Rückgabedatum</label>
-                  <input id="rueckgabe" type="date" name="rueckgabe" required>
-              </div>
-          </div>
+    <div class="form-group">
+        <label for="email">E-Mail</label>
+        <input id="email" name="email" type="email" required>
+    </div>
 
-          <button type="submit" class="btn-primary full-width">
-              Leihe speichern
-          </button>
-      </form>
-  </section>
+    <div class="form-group-inline">
+        <div class="form-group">
+            <label for="ausgabe">Ausgabe</label>
+            <input id="ausgabe" name="ausgabe" type="date" min="{{ current_date }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="rueckgabe">Rückgabe</label>
+            <input id="rueckgabe" name="rueckgabe" type="date" required>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="photo">Foto der Box</label>
+        <input id="photo" type="file" name="photo" accept="image/*" required>
+    </div>
+
+    <button class="btn-primary full-width">Leihe speichern</button>
+
+</form>
+
+</section>
 
 {% endblock %}

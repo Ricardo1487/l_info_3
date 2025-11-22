@@ -1,5 +1,5 @@
 from datetime import date
-
+import os
 from flask import Flask, render_template, request, redirect, url_for, abort
 
 from app.services.loans import (
@@ -7,130 +7,199 @@ from app.services.loans import (
     create_loan,
     get_loan_by_id,
     return_loan,
-    delete_loan_if_fully_returned,
-    mark_overdue_loans,
+    extend_loan
 )
 
-from app.services.boxes import get_box_id_by_code, create_box
+from app.services.boxes import (
+    get_box_id_by_code,
+    create_box
+)
+
+from sqlalchemy import text
+from app.config.database import SessionLocal
 
 app = Flask(__name__)
 
 
 @app.route("/")
 def home():
-    """
-    Übersichtsseite: zeigt alle aktuellen Leihen aus der Datenbank.
-    """
-    mark_overdue_loans(date.today())
-
-    loans = list_loans()  # direkt aus Supabase über den Service
+    loans = list_loans()
     return render_template("index.html", title="Übersicht", loans=loans)
 
 
+
+# ---------------------------------------------------
+# Neue Leihe
+# ---------------------------------------------------
 @app.route("/new-loan")
 def new_loan():
-    """
-    Formular für eine neue Leihe anzeigen.
-    """
-    return render_template("new_loan.html", title="Neue Leihe")
+    return render_template(
+        "new_loan.html",
+        title="Neue Leihe",
+        current_date=date.today().isoformat()
+    )
+
 
 
 @app.route("/save-loan", methods=["POST"])
 def save_loan():
-    """
-    Formulardaten für eine neue Leihe entgegennehmen.
-    Wenn die Box noch nicht existiert, zuerst nachfragen,
-    ob sie angelegt werden soll.
-    """
+    box_code = request.form.get("box_code", "").strip()
+    if not box_code:
+        abort(400, "Box-Code fehlt.")
 
-    # --- Formularwerte auslesen ---
-    try:
-        box_code = request.form["box_code"].strip()
-        email = request.form["email"]
-        ausgabe_str = request.form["ausgabe"]
-        rueckgabe_str = request.form["rueckgabe"]
-    except KeyError:
-        abort(400, description="Fehlende Formularfelder")
+    # Foto holen
+    photo = request.files.get("photo")
+    if not photo:
+        abort(400, "Foto muss hochgeladen werden!")
 
-    try:
-        planned_start = date.fromisoformat(ausgabe_str)
-        planned_end = date.fromisoformat(rueckgabe_str)
-    except ValueError:
-        abort(400, description="Datumsformat muss YYYY-MM-DD sein")
+    # Temporär speichern
+    os.makedirs("uploads/tmp", exist_ok=True)
+    tmp_filename = f"tmp_{box_code}_{date.today()}.jpg"
+    tmp_path = os.path.join("uploads/tmp", tmp_filename)
+    photo.save(tmp_path)
 
-    # --- Prüfen, ob Box existiert ---
-    box_id = get_box_id_by_code(box_code)
+    # Prüfen ob Box existiert
+    existing_box_id = get_box_id_by_code(box_code)
 
-    # Hat der User schon bestätigt, dass Box erstellt werden soll?
-    confirm = request.form.get("confirm_create_box")  # kann None, "yes", "no" sein
-
-    if box_id is None and confirm is None:
-        # 1. Runde: Box existiert nicht, noch keine Bestätigung -> Nachfrage anzeigen
+    if existing_box_id is None:
+        # Box NICHT vorhanden → Nachfragen
         return render_template(
             "confirm_new_box.html",
             title="Neue Box anlegen?",
             box_code=box_code,
-            email=email,
-            ausgabe=ausgabe_str,
-            rueckgabe=rueckgabe_str,
+            tmp_filename=tmp_filename,
+            form_data=request.form
         )
 
-    if box_id is None and confirm == "no":
-        # User hat abgebrochen -> zurück zum Formular
-        return redirect(url_for("new_loan"))
+    # Box existiert → weiter
+    return process_loan_creation(existing_box_id, request.form, tmp_filename)
 
-    if box_id is None and confirm == "yes":
-        # User hat zugestimmt -> Box jetzt anlegen
-        box_id = create_box(box_code)
 
-    # Ab hier ist garantiert: box_id ist eine gültige int
-    created_by_user_id = 2  # TODO: später aus Login
+
+@app.route("/confirm-new-box", methods=["POST"])
+def confirm_new_box():
+    decision = request.form.get("decision")
+    box_code = request.form.get("box_code")
+    tmp_filename = request.form.get("tmp_filename")
+
+    # Ursprüngliche Felder wiederherstellen
+    form_data = {
+        "box_code": request.form.get("box_code"),
+        "email": request.form.get("email"),
+        "ausgabe": request.form.get("ausgabe"),
+        "rueckgabe": request.form.get("rueckgabe"),
+    }
+
+    if decision == "no":
+        # Temp löschen
+        tmp_path = os.path.join("uploads/tmp", tmp_filename)
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+        return render_template("new_loan.html", title="Neue Leihe")
+
+    if decision == "yes":
+        # Neue Box erstellen → AUTOMATISCH
+        new_box_id = create_box(box_code)
+
+        return process_loan_creation(new_box_id, form_data, tmp_filename)
+
+    abort(400, "Ungültige Auswahl.")
+
+
+
+# ---------------------------------------------------
+# Zentrale Leihe-Erstellung
+# ---------------------------------------------------
+def process_loan_creation(box_id, form_data, tmp_filename):
+
+    # Ausgabedatum validieren
+    ausgabe = date.fromisoformat(form_data["ausgabe"])
+    if ausgabe < date.today():
+        abort(400, "Ausgabedatum kann nicht in der Vergangenheit liegen.")
+
+    # Box darf nur 1 offene/überfällige Leihe haben
+    with SessionLocal() as session:
+        active = session.execute(
+            text("""
+                SELECT 1 FROM loans
+                WHERE box_id = :bid
+                  AND status IN ('OPEN', 'OVERDUE')
+                LIMIT 1
+            """),
+            {"bid": box_id}
+        ).first()
+
+        if active:
+            abort(400, "Diese Box ist bereits ausgeliehen!")
+
+    # Temporäre Datei verschieben
+    tmp_path = os.path.join("uploads/tmp", tmp_filename)
+    final_dir = "uploads"
+    os.makedirs(final_dir, exist_ok=True)
+
+    final_filename = f"loan_{box_id}_{date.today()}.jpg"
+    final_path = os.path.join(final_dir, final_filename)
+
+    if os.path.exists(tmp_path):
+        os.rename(tmp_path, final_path)
+    else:
+        abort(400, "Temporäres Foto nicht gefunden.")
+
+    # Rest speichern
+    email = form_data["email"]
+    rueckgabe = date.fromisoformat(form_data["rueckgabe"])
 
     create_loan(
         box_id=box_id,
         contact_email=email,
-        planned_start_date=planned_start,
-        planned_end_date=planned_end,
-        created_by_user_id=created_by_user_id,
+        planned_start_date=ausgabe,
+        planned_end_date=rueckgabe,
+        created_by_user_id=2
     )
 
     return redirect(url_for("home"))
 
 
+
+# ---------------------------------------------------
+# Rückgabe
+# ---------------------------------------------------
 @app.route("/return/<int:loan_id>", methods=["GET", "POST"])
 def return_box(loan_id: int):
-    """
-    Rückgabe einer Leihe.
-    GET:  Bestätigungsseite anzeigen.
-    POST: Leihe als zurückgegeben markieren.
-    """
     loan = get_loan_by_id(loan_id)
     if loan is None:
-        abort(404, description="Leihe nicht gefunden")
+        abort(404, "Leihe nicht gefunden.")
 
     if request.method == "POST":
-        # Fürs erste: Rückgabedatum = heute.
         actual_end = date.today()
-
-        # TODO: closed_by_user_id später aus Login ermitteln.
-        closed_by_user_id = 2
-
         return_loan(
             loan_id=loan_id,
             actual_end_date=actual_end,
-            closed_by_user_id=closed_by_user_id,
+            closed_by_user_id=2
         )
         return redirect(url_for("home"))
 
-    # GET: Rückgabe-Template anzeigen
-    return render_template(
-        "return.html",
-        title="Rückgabe",
-        loan=loan,
-    )
+    return render_template("return.html", title="Rückgabe", loan=loan)
+
+
+
+# ---------------------------------------------------
+# Leihe verlängern
+# ---------------------------------------------------
+@app.route("/extend-loan/<int:loan_id>", methods=["POST"])
+def extend_loan_route(loan_id):
+    new_date_str = request.form.get("new_date")
+    if not new_date_str:
+        abort(400, "Neues Enddatum fehlt.")
+
+    new_date = date.fromisoformat(new_date_str)
+
+    extend_loan(loan_id=loan_id, new_end_date=new_date)
+
+    return redirect(url_for("home"))
+
 
 
 if __name__ == "__main__":
-    # Lokaler Entwicklungsstart:
-    # python -m app.web
     app.run(debug=True)

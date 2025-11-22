@@ -25,12 +25,22 @@ def get_box_id_by_code(box_code: str) -> Optional[int]:
         return row["id"] if row else None
 
 
-def create_box(box_code: str, description: Optional[str] = None) -> int:
+def create_box(box_code: Optional[str] = None, description: Optional[str] = None) -> int:
     """
-    Legt eine neue Box mit dem gegebenen Code an
-    und gibt die neue id zurück.
+    Legt eine neue Box an. Falls kein Code übergeben wurde,
+    wird automatisch BOX-001, BOX-002 ... erzeugt.
     """
     with SessionLocal() as session:
+
+        # Automatisch generieren
+        if box_code is None or box_code.strip() == "":
+            row = session.execute(
+                text("SELECT MAX(id) AS max_id FROM boxes")
+            ).mappings().first()
+
+            next_id = (row["max_id"] or 0) + 1
+            box_code = f"BOX-{next_id:03d}"
+
         result = session.execute(
             text("""
                 INSERT INTO boxes (box_code, is_active)
