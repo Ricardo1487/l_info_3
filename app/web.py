@@ -38,24 +38,17 @@ def new_loan():
 @app.route("/save-loan", methods=["POST"])
 def save_loan():
     """
-    Formulardaten für eine neue Leihe entgegennehmen
-    und in der Datenbank speichern.
-    Erwartete Form-Felder:
-      - box_id      (z. B. "1")
-      - email       (Kontakt-E-Mail)
-      - ausgabe     (YYYY-MM-DD)
-      - rueckgabe   (YYYY-MM-DD)
+    Formulardaten für eine neue Leihe entgegennehmen.
+    Wenn die Box noch nicht existiert, zuerst nachfragen,
+    ob sie angelegt werden soll.
     """
-    try:
-        box_id = int(request.form["box_id"])
-    except (KeyError, ValueError):
-        # Formulardaten unvollständig oder ungültig
-        abort(400, description="Ungültige oder fehlende Box-ID")
 
+    # --- Formularwerte auslesen ---
     try:
+        box_code = request.form["box_code"].strip()
         email = request.form["email"]
-        ausgabe_str = request.form["ausgabe"]      # "2025-12-01"
-        rueckgabe_str = request.form["rueckgabe"]  # "2025-12-10"
+        ausgabe_str = request.form["ausgabe"]
+        rueckgabe_str = request.form["rueckgabe"]
     except KeyError:
         abort(400, description="Fehlende Formularfelder")
 
@@ -65,9 +58,33 @@ def save_loan():
     except ValueError:
         abort(400, description="Datumsformat muss YYYY-MM-DD sein")
 
-    # TODO: created_by_user_id später aus Login ermitteln.
-    # Aktuell nutzen wir z. B. den HiWi mit id=2.
-    created_by_user_id = 2
+    # --- Prüfen, ob Box existiert ---
+    box_id = get_box_id_by_code(box_code)
+
+    # Hat der User schon bestätigt, dass Box erstellt werden soll?
+    confirm = request.form.get("confirm_create_box")  # kann None, "yes", "no" sein
+
+    if box_id is None and confirm is None:
+        # 1. Runde: Box existiert nicht, noch keine Bestätigung -> Nachfrage anzeigen
+        return render_template(
+            "confirm_new_box.html",
+            title="Neue Box anlegen?",
+            box_code=box_code,
+            email=email,
+            ausgabe=ausgabe_str,
+            rueckgabe=rueckgabe_str,
+        )
+
+    if box_id is None and confirm == "no":
+        # User hat abgebrochen -> zurück zum Formular
+        return redirect(url_for("new_loan"))
+
+    if box_id is None and confirm == "yes":
+        # User hat zugestimmt -> Box jetzt anlegen
+        box_id = create_box(box_code)
+
+    # Ab hier ist garantiert: box_id ist eine gültige int
+    created_by_user_id = 2  # TODO: später aus Login
 
     create_loan(
         box_id=box_id,
