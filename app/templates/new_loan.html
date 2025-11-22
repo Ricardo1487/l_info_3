@@ -1,37 +1,40 @@
 {% extends "base.html" %}
 
 {% block content %}
+
   <section class="page-header">
       <h1 class="page-title">Neue Leihe</h1>
       <p class="page-subtitle">Box ausgeben und Rückgabedatum festlegen.</p>
   </section>
 
   <section class="card">
-    <form action="{{ url_for('save_loan') }}" method="post" class="form">
-      <div class="form-group">
-        <label for="box_id">Box-ID</label>
-        <input id="box_id" type="text" name="box_id" required placeholder="z. B. 1">
-      </div>
+      <form action="{{ url_for('save_loan') }}" method="post" class="form">
 
-      <div class="form-group">
-        <label for="email">Kontakt-E-Mail</label>
-        <input id="email" type="email" name="email" required placeholder="student@th-koeln.de">
-      </div>
+          <div class="form-group">
+              <label for="box_id">Box-ID</label>
+              <input id="box_id" type="text" name="box_id" required placeholder="z. B. 1">
+          </div>
 
-      <div class="form-group-inline">
-        <div class="form-group">
-          <label for="ausgabe">Ausgabedatum</label>
-          <input id="ausgabe" type="date" name="ausgabe" required>
-        </div>
-        <div class="form-group">
-          <label for="rueckgabe">Rückgabedatum</label>
-          <input id="rueckgabe" type="date" name="rueckgabe" required>
-        </div>
-      </div>
+          <div class="form-group">
+              <label for="email">Kontakt-E-Mail</label>
+              <input id="email" type="email" name="email" required placeholder="student@th-koeln.de">
+          </div>
 
-      <button type="submit" class="btn-primary full-width">
-        Leihe speichern
-      </button>
-    </form>
+          <div class="form-group-inline">
+              <div class="form-group">
+                  <label for="ausgabe">Ausgabedatum</label>
+                  <input id="ausgabe" type="date" name="ausgabe" required>
+              </div>
+              <div class="form-group">
+                  <label for="rueckgabe">Rückgabedatum</label>
+                  <input id="rueckgabe" type="date" name="rueckgabe" required>
+              </div>
+          </div>
+
+          <button type="submit" class="btn-primary full-width">
+              Leihe speichern
+          </button>
+      </form>
   </section>
+
 {% endblock %}

@@ -1,56 +1,93 @@
 {% extends "base.html" %}
 
 {% block content %}
+
   <section class="page-header">
       <h1 class="page-title">Boxenübersicht</h1>
-      <p class="page-subtitle">Alle laufenden Leihen im Überblick.</p>
+      <p class="page-subtitle">Alle laufenden Leihen und Rückgaben im Blick.</p>
   </section>
 
   {% if loans %}
+    {# Kleine Stat-Kacheln oben #}
+    <section class="stats-grid">
+        {% set open_count = loans|selectattr('status','equalto','OPEN')|list|length %}
+        {% set returned_count = loans|selectattr('status','equalto','RETURNED')|list|length %}
+        {% set missing_count = loans|selectattr('status','equalto','MISSING_ITEMS')|list|length %}
+        {% set total_count = loans|length %}
+
+        <article class="stat-card stat-total">
+            <span class="stat-label">Gesamt</span>
+            <span class="stat-value">{{ total_count }}</span>
+            <span class="stat-desc">Leihen im System</span>
+        </article>
+
+        <article class="stat-card stat-open">
+            <span class="stat-label">Offen</span>
+            <span class="stat-value">{{ open_count }}</span>
+            <span class="stat-desc">Aktiv laufende Leihen</span>
+        </article>
+
+        <article class="stat-card stat-returned">
+            <span class="stat-label">Zurück</span>
+            <span class="stat-value">{{ returned_count }}</span>
+            <span class="stat-desc">Abgeschlossene Leihen</span>
+        </article>
+
+        <article class="stat-card stat-missing">
+            <span class="stat-label">Fehlende Teile</span>
+            <span class="stat-value">{{ missing_count }}</span>
+            <span class="stat-desc">MISSING_ITEMS</span>
+        </article>
+    </section>
+
+    {# Karten-Liste mit allen Leihen #}
     <section class="card-list">
       {% for loan in loans %}
         <article class="loan-card">
           <header class="loan-card-header">
-            <div>
-              <div class="loan-box-label">Box</div>
-              <div class="loan-box-code">{{ loan.box_code }}</div>
-            </div>
-            <span class="status-pill status-{{ loan.status|lower }}">
-              {{ loan.status|lower|replace("_", " ") }}
-            </span>
+              <div class="loan-box">
+                  <div class="loan-box-label">Box</div>
+                  <div class="loan-box-code">{{ loan.box_code }}</div>
+              </div>
+
+              <span class="status-pill status-{{ loan.status|lower }}">
+                  {{ loan.status|lower|replace("_", " ") }}
+              </span>
           </header>
 
           <div class="loan-card-body">
-            <div class="loan-row">
-              <span class="loan-label">Leih-ID</span>
-              <span class="loan-value">#{{ loan.id }}</span>
-            </div>
+              <div class="loan-row">
+                  <span class="loan-label">Leih-ID</span>
+                  <span class="loan-value">#{{ loan.id }}</span>
+              </div>
 
-            <div class="loan-row">
-              <span class="loan-label">Ausgabe (geplant)</span>
-              <span class="loan-value">{{ loan.planned_start_date }}</span>
-            </div>
+              <div class="loan-row">
+                  <span class="loan-label">Ausgabe (geplant)</span>
+                  <span class="loan-value">{{ loan.planned_start_date }}</span>
+              </div>
 
-            <div class="loan-row">
-              <span class="loan-label">Rückgabe (geplant)</span>
-              <span class="loan-value">{{ loan.planned_end_date }}</span>
-            </div>
+              <div class="loan-row">
+                  <span class="loan-label">Rückgabe (geplant)</span>
+                  <span class="loan-value">{{ loan.planned_end_date }}</span>
+              </div>
 
-            <div class="loan-row">
-              <span class="loan-label">Kontakt</span>
-              <span class="loan-value email-value">{{ loan.contact_email }}</span>
-            </div>
+              <div class="loan-row">
+                  <span class="loan-label">Kontakt</span>
+                  <span class="loan-value email-value">{{ loan.contact_email }}</span>
+              </div>
           </div>
 
           <footer class="loan-card-footer">
-            <a href="{{ url_for('return_box', loan_id=loan.id) }}" class="btn-primary">
-              Rückgabe starten
-            </a>
+              <a href="{{ url_for('return_box', loan_id=loan.id) }}" class="btn-primary">
+                  Rückgabe starten
+              </a>
           </footer>
         </article>
       {% endfor %}
     </section>
+
   {% else %}
     <p>Aktuell sind keine Leihen vorhanden.</p>
   {% endif %}
+
 {% endblock %}

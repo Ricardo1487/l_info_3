@@ -1,4 +1,4 @@
-/* ========== GLOBAL ========== */
+/* ========== THEME VARIABLES ========== */
 
 :root {
   --bg: #050816;
@@ -8,16 +8,33 @@
   --text: #e5e7eb;
   --text-soft: #9ca3af;
   --primary: #6366f1;
-  --primary-soft: rgba(99,102,241,0.16);
+  --primary-soft: rgba(99,102,241,0.18);
   --primary-hover: #4f46e5;
-  --danger: #f97373;
-  --success: #34d399;
-  --warning: #fbbf24;
   --radius-lg: 22px;
   --radius-md: 14px;
   --shadow-soft: 0 18px 45px rgba(0,0,0,0.5);
   --shadow-small: 0 8px 20px rgba(0,0,0,0.35);
+  --danger: #f97373;
+  --success: #34d399;
+  --warning: #fbbf24;
 }
+
+/* Light Mode Overrides */
+html[data-theme="light"] {
+  --bg: #f4f5fb;
+  --bg-soft: #e5e7f5;
+  --surface: #ffffff;
+  --surface-soft: #eef1ff;
+  --text: #111827;
+  --text-soft: #6b7280;
+  --primary: #4f46e5;
+  --primary-soft: rgba(79,70,229,0.16);
+  --primary-hover: #4338ca;
+  --shadow-soft: 0 18px 45px rgba(15,23,42,0.18);
+  --shadow-small: 0 8px 20px rgba(15,23,42,0.16);
+}
+
+/* ========== GLOBAL ========== */
 
 *,
 *::before,
@@ -28,7 +45,7 @@
 body.app-body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(circle at top left, #1d1b4c 0, #050816 45%);
+  background: radial-gradient(circle at top left, #1d1b4c 0, var(--bg) 50%);
   color: var(--text);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
 }
@@ -39,13 +56,13 @@ body.app-body {
   position: sticky;
   top: 0;
   z-index: 10;
-  padding: 0.9rem 1.3rem;
+  padding: 0.9rem 1.2rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(90deg, #050816, #050816ee, #050816);
+  background: linear-gradient(90deg, var(--bg), rgba(5,8,22,0.96), var(--bg));
   backdrop-filter: blur(18px);
-  border-bottom: 1px solid rgba(148,163,184,0.12);
+  border-bottom: 1px solid rgba(148,163,184,0.16);
 }
 
 .nav-left {
@@ -57,7 +74,7 @@ body.app-body {
 .logo-icon {
   width: 32px;
   height: 32px;
-  border-radius: 12px;
+  border-radius: 14px;
   background: radial-gradient(circle at 30% 20%, #facc15, #fb7185);
   display: flex;
   align-items: center;
@@ -70,34 +87,38 @@ body.app-body {
   display: flex;
   flex-direction: column;
 }
-
 .logo-title {
   font-size: 0.95rem;
   font-weight: 600;
 }
-
 .logo-subtitle {
   font-size: 0.7rem;
   color: var(--text-soft);
 }
 
-.nav-links {
+.nav-right {
   display: flex;
   align-items: center;
   gap: 0.6rem;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .nav-link {
   font-size: 0.8rem;
   text-decoration: none;
   color: var(--text-soft);
-  padding: 0.45rem 0.8rem;
+  padding: 0.45rem 0.9rem;
   border-radius: 999px;
 }
 
 .nav-link:hover {
   color: var(--text);
-  background: rgba(148,163,184,0.12);
+  background: rgba(148,163,184,0.14);
 }
 
 .nav-link-primary {
@@ -105,10 +126,30 @@ body.app-body {
   color: var(--primary);
   font-weight: 600;
 }
-
 .nav-link-primary:hover {
   background: var(--primary);
   color: white;
+}
+
+/* Theme Toggle Button */
+.theme-toggle {
+  border-radius: 999px;
+  border: 1px solid rgba(148,163,184,0.4);
+  background: rgba(15,23,42,0.4);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-soft);
+}
+.theme-toggle:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.theme-icon {
+  font-size: 1rem;
 }
 
 /* ========== MAIN LAYOUT ========== */
@@ -122,36 +163,68 @@ body.app-body {
 /* ========== PAGE HEADER ========== */
 
 .page-header {
-  margin-bottom: 0.8rem;
+  margin-bottom: 0.9rem;
 }
-
 .page-title {
-  margin: 0 0 0.2rem;
+  margin: 0 0 0.25rem;
   font-size: 1.6rem;
   letter-spacing: 0.02em;
 }
-
 .page-subtitle {
   margin: 0;
   font-size: 0.85rem;
   color: var(--text-soft);
 }
 
+/* ========== STATS CARDS ========== */
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin-bottom: 1rem;
+}
+
+.stat-card {
+  background: radial-gradient(circle at top left, var(--surface-soft), var(--surface));
+  border-radius: 18px;
+  padding: 0.7rem 0.9rem;
+  box-shadow: var(--shadow-small);
+  border: 1px solid rgba(148,163,184,0.18);
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-soft);
+}
+.stat-value {
+  display: block;
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-top: 0.1rem;
+}
+.stat-desc {
+  font-size: 0.7rem;
+  color: var(--text-soft);
+  margin-top: 0.1rem;
+}
+
+.stat-total   { border-left: 3px solid var(--primary); }
+.stat-open    { border-left: 3px solid var(--warning); }
+.stat-returned{ border-left: 3px solid var(--success); }
+.stat-missing { border-left: 3px solid var(--danger); }
+
 /* ========== CARDS ========== */
 
 .card,
 .loan-card {
-  background: radial-gradient(circle at top left, #1f2937, #020617);
+  background: radial-gradient(circle at top left, var(--surface-soft), var(--surface));
   border-radius: var(--radius-lg);
   padding: 1.1rem 1.2rem;
   box-shadow: var(--shadow-soft);
-  border: 1px solid rgba(148,163,184,0.16);
-}
-
-.card + .card,
-.card + .card-list,
-.card-list + .card {
-  margin-top: 1rem;
+  border: 1px solid rgba(148,163,184,0.18);
 }
 
 .card-list {
@@ -160,13 +233,13 @@ body.app-body {
   gap: 0.9rem;
 }
 
-/* ========== LOAN CARD ========== */
+/* Loan Card */
 
 .loan-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.6rem;
+  margin-bottom: 0.65rem;
 }
 
 .loan-box-label {
@@ -175,7 +248,6 @@ body.app-body {
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
-
 .loan-box-code {
   font-size: 1.05rem;
   font-weight: 600;
@@ -185,8 +257,8 @@ body.app-body {
 .loan-card-body {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  margin-top: 0.3rem;
+  gap: 0.35rem;
+  margin-top: 0.2rem;
 }
 
 .loan-row {
@@ -196,13 +268,15 @@ body.app-body {
   font-size: 0.8rem;
   gap: 1rem;
 }
-
 .loan-label {
   color: var(--text-soft);
 }
-
 .loan-value {
   font-weight: 500;
+}
+.email-value {
+  font-size: 0.78rem;
+  word-break: break-all;
 }
 
 .loan-card-footer {
@@ -211,40 +285,36 @@ body.app-body {
   justify-content: flex-end;
 }
 
-.email-value {
-  font-size: 0.78rem;
-}
-
 /* Status-Pills */
 
 .status-pill {
-  padding: 0.35rem 0.75rem;
+  padding: 0.32rem 0.8rem;
   border-radius: 999px;
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
   font-weight: 600;
 }
 
 .status-open {
-  color: #bfdbfe;
-  background: rgba(59,130,246,0.16);
+  color: #1f2933;
+  background: rgba(251, 191, 36, 0.9);
 }
 
 .status-returned {
-  color: #bbf7d0;
-  background: rgba(34,197,94,0.16);
+  color: #022c22;
+  background: rgba(45, 212, 191, 0.9);
 }
 
 .status-missing_items {
-  color: #fecaca;
-  background: rgba(248,113,113,0.18);
+  color: #3f0c0c;
+  background: rgba(248, 113, 113, 0.95);
 }
 
 /* ========== FORMS ========== */
 
 .form {
-  margin-top: 0.4rem;
+  margin-top: 0.3rem;
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
@@ -277,33 +347,30 @@ input[type="email"],
 input[type="date"],
 input[type="file"] {
   width: 100%;
-  background: #020617;
+  background: var(--bg-soft);
   border-radius: var(--radius-md);
-  border: 1px solid rgba(148,163,184,0.35);
-  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(148,163,184,0.4);
+  padding: 0.7rem 0.8rem;
   font-size: 0.85rem;
   color: var(--text);
   outline: none;
 }
 
-input[type="text"]:focus,
-input[type="email"]:focus,
-input[type="date"]:focus,
-input[type="file"]:focus {
+input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 1px rgba(99,102,241,0.4);
+  box-shadow: 0 0 0 1px rgba(99,102,241,0.6);
 }
 
 /* ========== BUTTONS ========== */
 
 .btn-primary,
 button {
-  background: radial-gradient(circle at top left, #6366f1, #4f46e5);
+  background: radial-gradient(circle at top left, var(--primary), var(--primary-hover));
   border-radius: 999px;
   border: none;
   color: white;
-  padding: 0.7rem 1.2rem;
-  font-size: 0.85rem;
+  padding: 0.75rem 1.3rem;
+  font-size: 0.86rem;
   font-weight: 600;
   cursor: pointer;
   box-shadow: var(--shadow-small);
@@ -316,7 +383,7 @@ button {
 
 .btn-primary:hover,
 button:hover {
-  background: radial-gradient(circle at top left, #818cf8, #4f46e5);
+  background: radial-gradient(circle at top left, var(--primary-hover), var(--primary));
   transform: translateY(-1px);
   box-shadow: 0 10px 30px rgba(79,70,229,0.6);
 }
@@ -325,7 +392,7 @@ button:hover {
   width: 100%;
 }
 
-/* ========== BOTTOM NAV ========== */
+/* ========== BOTTOM NAV (MOBILE) ========== */
 
 .bottom-nav {
   position: fixed;
@@ -336,7 +403,7 @@ button:hover {
   background: rgba(15,23,42,0.96);
   backdrop-filter: blur(18px);
   border-top: 1px solid rgba(148,163,184,0.18);
-  display: none; /* Desktop: aus, Handy: an */
+  display: none;
   justify-content: space-between;
   z-index: 12;
 }
@@ -346,14 +413,14 @@ button:hover {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.2rem;
-  font-size: 0.65rem;
+  gap: 0.18rem;
+  font-size: 0.68rem;
   text-decoration: none;
   color: var(--text-soft);
 }
 
 .bottom-nav-icon {
-  font-size: 1.1rem;
+  font-size: 1.15rem;
 }
 
 /* ========== RESPONSIVE ========== */
@@ -365,6 +432,10 @@ button:hover {
 
   .app-main {
     padding: 1rem 0.95rem 4.5rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .loan-card,
