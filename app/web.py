@@ -11,7 +11,7 @@ from app.services.loans import (
     mark_overdue_loans,
 )
 
-from app.services.boxes import get_or_create_box_id, create_box
+from app.services.boxes import get_box_id_by_code, create_box
 
 app = Flask(__name__)
 
