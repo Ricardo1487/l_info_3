@@ -3,19 +3,23 @@
 {% block content %}
 <h2>Neue Leihe starten</h2>
 
-<form action="{{ url_for('save_loan') }}" method="post">
-  <label>Box-ID:</label>
-  <input type="text" name="box_id" required><br>
+<div class="card">
+<form action="{{ url_for('save_loan') }}" method="post" class="form">
 
-  <label>E-Mail:</label>
-  <input type="email" name="email" required><br>
+  <label>Box-ID</label>
+  <input type="text" name="box_id" required>
 
-  <label>Ausgabedatum:</label>
-  <input type="date" name="ausgabe" required><br>
+  <label>E-Mail</label>
+  <input type="email" name="email" required>
 
-  <label>Rückgabedatum:</label>
-  <input type="date" name="rueckgabe" required><br>
+  <label>Ausgabedatum</label>
+  <input type="date" name="ausgabe" required>
 
-  <button type="submit">Leihe speichern</button>
+  <label>Rückgabedatum</label>
+  <input type="date" name="rueckgabe" required>
+
+  <button class="btn-primary" type="submit">Leihe speichern</button>
+
 </form>
+</div>
 {% endblock %}
