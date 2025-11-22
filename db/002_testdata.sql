@@ -3,10 +3,10 @@ VALUES
   ('admin', 'admin@example.com', 'dummyhash', 'ADMIN'),
   ('hiwi', 'hiwi@example.com', 'dummyhash', 'HIWI');
 
-INSERT INTO boxes (box_code, description)
+INSERT INTO boxes (box_code)
 VALUES
-  ('BOX-001', 'Arduino Starterkit'),
-  ('BOX-002', 'Raspberry Pi Set');
+  ('BOX-001'),
+  ('BOX-002');
 
 INSERT INTO loans (
   box_id, contact_email, status,

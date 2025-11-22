@@ -13,7 +13,6 @@ CREATE TABLE users (
 CREATE TABLE boxes (
   id          SERIAL PRIMARY KEY,
   box_code    VARCHAR(50) UNIQUE,
-  description TEXT,
   is_active   BOOLEAN NOT NULL DEFAULT TRUE
 );
 

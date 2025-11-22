@@ -33,11 +33,11 @@ def create_box(box_code: str, description: Optional[str] = None) -> int:
     with SessionLocal() as session:
         result = session.execute(
             text("""
-                INSERT INTO boxes (box_code, description, is_active)
-                VALUES (:code, :desc, TRUE)
+                INSERT INTO boxes (box_code, is_active)
+                VALUES (:code, TRUE)
                 RETURNING id
             """),
-            {"code": box_code, "desc": description},
+            {"code": box_code},
         )
         new_id = result.scalar_one()
         session.commit()
