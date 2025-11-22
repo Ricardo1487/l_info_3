@@ -7,6 +7,8 @@ from app.services.loans import (
     create_loan,
     get_loan_by_id,
     return_loan,
+    delete_loan_if_fully_returned,
+    mark_overdue_loans,
 )
 
 app = Flask(__name__)
