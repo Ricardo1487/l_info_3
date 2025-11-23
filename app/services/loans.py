@@ -294,3 +294,35 @@ def delete_loan_if_fully_returned(loan_id: int) -> bool:
 
         session.commit()
         return True
+
+
+# ---------------------------------------------------------
+#  Verfügbarkeits-Info für eine Box (für Kalender/Frontend)
+# ---------------------------------------------------------
+def get_planned_periods_for_box(box_id: int) -> List[Dict[str, date]]:
+    """
+    Gibt alle geplanten Zeiträume (planned_start_date, planned_end_date)
+    für eine Box zurück.
+
+    Diese Funktion wird für den Verfügbarkeitskalender benutzt,
+    damit im Frontend sichtbar ist, wann eine Box bereits belegt ist.
+    """
+    with SessionLocal() as session:
+        rows = session.execute(
+            text("""
+                SELECT planned_start_date, planned_end_date
+                FROM loans
+                WHERE box_id = :bid
+                  AND status IN ('OPEN', 'OVERDUE', 'RETURNED')
+                ORDER BY planned_start_date
+            """),
+            {"bid": box_id},
+        ).mappings().all()
+
+        return [
+            {
+                "start": r["planned_start_date"],
+                "end": r["planned_end_date"],
+            }
+            for r in rows
+        ]

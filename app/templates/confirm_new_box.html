@@ -5,22 +5,17 @@
 <section class="card">
     <h2>Neue Box anlegen?</h2>
 
-    <p>
-        Die Box <strong>{{ box_code }}</strong> existiert noch nicht.
-    </p>
-
+    <p>Die Box <strong>{{ box_code }}</strong> existiert noch nicht.</p>
     <p>Möchten Sie diese Box jetzt anlegen?</p>
 
-    <form action="{{ url_for('confirm_new_box') }}" method="post" enctype="multipart/form-data">
-        <input type="hidden" name="box_code" value="{{ box_code }}">
+    <form action="{{ url_for('confirm_new_box') }}" method="post">
 
-        <!-- Ursprüngliche Felder wieder mit übergeben -->
+        <input type="hidden" name="box_code" value="{{ box_code }}">
+        <input type="hidden" name="tmp_filename" value="{{ tmp_filename }}">
+
         {% for key, value in form_data.items() %}
             <input type="hidden" name="{{ key }}" value="{{ value }}">
         {% endfor %}
-
-        <!-- Foto wieder mit übergeben -->
-        <input type="hidden" name="photo" value="{{ form_data.get('photo') }}">
 
         <button name="decision" value="yes" class="btn-primary full-width">Ja, Box anlegen</button>
         <button name="decision" value="no" class="btn-secondary full-width" style="margin-top:10px;">Nein, zurück</button>
@@ -28,4 +23,3 @@
 </section>
 
 {% endblock %}
-

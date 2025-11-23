@@ -1,18 +1,20 @@
 from datetime import date
 import os
-from flask import Flask, render_template, request, redirect, url_for, abort
+from flask import Flask, render_template, request, redirect, url_for, abort, jsonify
 
 from app.services.loans import (
     list_loans,
     create_loan,
     get_loan_by_id,
     return_loan,
-    extend_loan
+    extend_loan,
+    get_planned_periods_for_box,
+
 )
 
 from app.services.boxes import (
     get_box_id_by_code,
-    create_box
+    create_box,
 )
 
 from sqlalchemy import text
@@ -21,6 +23,9 @@ from app.config.database import SessionLocal
 app = Flask(__name__)
 
 
+# ---------------------------------------------------
+# Übersicht
+# ---------------------------------------------------
 @app.route("/")
 def home():
     loans = list_loans()
@@ -29,7 +34,7 @@ def home():
 
 
 # ---------------------------------------------------
-# Neue Leihe
+# Neue Leihe Formular
 # ---------------------------------------------------
 @app.route("/new-loan")
 def new_loan():
@@ -39,10 +44,42 @@ def new_loan():
         current_date=date.today().isoformat()
     )
 
+# ---------------------------------------------------
+# API: Verfügbarkeit einer Box (für Kalender / JS)
+# ---------------------------------------------------
+@app.route("/api/box/<box_code>/availability")
+def api_box_availability(box_code: str):
+    """
+    Gibt alle geplanten Zeiträume für eine Box als JSON zurück.
+    Wird vom Frontend genutzt, um belegte Tage im Kalender darzustellen.
+    """
+    # Box-ID über den Code holen
+    box_id = get_box_id_by_code(box_code)
+    if box_id is None:
+        return jsonify({"box_id": None, "periods": []})
+
+    # Zeiträume aus loans.py Funktion holen
+    periods = get_planned_periods_for_box(box_id)
+
+    # JSON-Antwort erstellen
+    return jsonify({
+        "box_id": box_id,
+        "periods": [
+            {
+                "start": p["start"].isoformat(),
+                "end": p["end"].isoformat(),
+            }
+            for p in periods
+        ]
+    })
 
 
+# ---------------------------------------------------
+# Leihe Versuch → Box prüfen
+# ---------------------------------------------------
 @app.route("/save-loan", methods=["POST"])
 def save_loan():
+
     box_code = request.form.get("box_code", "").strip()
     if not box_code:
         abort(400, "Box-Code fehlt.")
@@ -52,17 +89,16 @@ def save_loan():
     if not photo:
         abort(400, "Foto muss hochgeladen werden!")
 
-    # Temporär speichern
+    # Foto temporär speichern
     os.makedirs("uploads/tmp", exist_ok=True)
     tmp_filename = f"tmp_{box_code}_{date.today()}.jpg"
     tmp_path = os.path.join("uploads/tmp", tmp_filename)
     photo.save(tmp_path)
 
-    # Prüfen ob Box existiert
+    # Box existiert?
     existing_box_id = get_box_id_by_code(box_code)
 
     if existing_box_id is None:
-        # Box NICHT vorhanden → Nachfragen
         return render_template(
             "confirm_new_box.html",
             title="Neue Box anlegen?",
@@ -76,13 +112,15 @@ def save_loan():
 
 
 
+# ---------------------------------------------------
+# Nutzer klickt auf JA oder NEIN beim Box-Anlegen
+# ---------------------------------------------------
 @app.route("/confirm-new-box", methods=["POST"])
 def confirm_new_box():
     decision = request.form.get("decision")
     box_code = request.form.get("box_code")
     tmp_filename = request.form.get("tmp_filename")
 
-    # Ursprüngliche Felder wiederherstellen
     form_data = {
         "box_code": request.form.get("box_code"),
         "email": request.form.get("email"),
@@ -91,17 +129,13 @@ def confirm_new_box():
     }
 
     if decision == "no":
-        # Temp löschen
         tmp_path = os.path.join("uploads/tmp", tmp_filename)
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
-
         return render_template("new_loan.html", title="Neue Leihe")
 
     if decision == "yes":
-        # Neue Box erstellen → AUTOMATISCH
         new_box_id = create_box(box_code)
-
         return process_loan_creation(new_box_id, form_data, tmp_filename)
 
     abort(400, "Ungültige Auswahl.")
@@ -109,31 +143,45 @@ def confirm_new_box():
 
 
 # ---------------------------------------------------
-# Zentrale Leihe-Erstellung
+# ZENTRALE LEIHE-ERSTELLUNG (mit Zeitüberschneidung!)
 # ---------------------------------------------------
 def process_loan_creation(box_id, form_data, tmp_filename):
 
-    # Ausgabedatum validieren
     ausgabe = date.fromisoformat(form_data["ausgabe"])
+    rueckgabe = date.fromisoformat(form_data["rueckgabe"])
+
+    # ❗ Ausgabedatum validieren
     if ausgabe < date.today():
         abort(400, "Ausgabedatum kann nicht in der Vergangenheit liegen.")
 
-    # Box darf nur 1 offene/überfällige Leihe haben
+    # ❗ Rückgabedatum validieren
+    if rueckgabe < ausgabe:
+        abort(400, "Rückgabedatum darf nicht vor dem Ausgabedatum liegen.")
+
+    # ❗ Überlappung prüfen (KALENDERLOGIK)
     with SessionLocal() as session:
-        active = session.execute(
+        overlap = session.execute(
             text("""
                 SELECT 1 FROM loans
                 WHERE box_id = :bid
-                  AND status IN ('OPEN', 'OVERDUE')
+                  AND status IN ('OPEN', 'OVERDUE', 'RETURNED')
+                  AND (
+                        :new_start <= planned_end_date
+                    AND :new_end   >= planned_start_date
+                  )
                 LIMIT 1
             """),
-            {"bid": box_id}
+            {
+                "bid": box_id,
+                "new_start": ausgabe,
+                "new_end": rueckgabe
+            }
         ).first()
 
-        if active:
-            abort(400, "Diese Box ist bereits ausgeliehen!")
+        if overlap:
+            abort(400, "Diese Box ist im angegebenen Zeitraum bereits ausgeliehen!")
 
-    # Temporäre Datei verschieben
+    # Foto verschieben
     tmp_path = os.path.join("uploads/tmp", tmp_filename)
     final_dir = "uploads"
     os.makedirs(final_dir, exist_ok=True)
@@ -146,9 +194,8 @@ def process_loan_creation(box_id, form_data, tmp_filename):
     else:
         abort(400, "Temporäres Foto nicht gefunden.")
 
-    # Rest speichern
+    # Leihe speichern
     email = form_data["email"]
-    rueckgabe = date.fromisoformat(form_data["rueckgabe"])
 
     create_loan(
         box_id=box_id,
@@ -168,14 +215,14 @@ def process_loan_creation(box_id, form_data, tmp_filename):
 @app.route("/return/<int:loan_id>", methods=["GET", "POST"])
 def return_box(loan_id: int):
     loan = get_loan_by_id(loan_id)
+
     if loan is None:
         abort(404, "Leihe nicht gefunden.")
 
     if request.method == "POST":
-        actual_end = date.today()
         return_loan(
             loan_id=loan_id,
-            actual_end_date=actual_end,
+            actual_end_date=date.today(),
             closed_by_user_id=2
         )
         return redirect(url_for("home"))
@@ -199,8 +246,7 @@ def extend_loan_route(loan_id):
 
     return redirect(url_for("home"))
 
-#seeyuuuh
+
 
 if __name__ == "__main__":
     app.run(debug=True)
-
