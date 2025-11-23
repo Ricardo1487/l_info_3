@@ -1,6 +1,9 @@
 from datetime import date
 
-from flask import Flask, render_template, request, redirect, url_for, abort
+from flask import Flask, render_template, request, redirect, url_for, abort, jsonify
+
+from pathlib import Path
+from app.services.image_compare import compare_images
 
 from app.services.loans import (
     list_loans,
@@ -9,7 +12,20 @@ from app.services.loans import (
     return_loan,
 )
 
+
 app = Flask(__name__)
+
+# --- Image upload configuration ---
+from pathlib import Path as _Path
+BASE_DIR = _Path(__file__).resolve().parent.parent
+UPLOAD_FOLDER = BASE_DIR / "uploads"
+UPLOAD_FOLDER.mkdir(exist_ok=True)
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg"}
+
+def allowed_file(filename: str) -> bool:
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+app.config["UPLOAD_FOLDER"] = str(UPLOAD_FOLDER)
 
 
 @app.route("/")
@@ -105,6 +121,52 @@ def return_box(loan_id: int):
         title="Rückgabe",
         loan=loan,
     )
+
+
+# --- Image upload & compare routes ---
+@app.route("/images/upload", methods=["GET", "POST"])
+def upload_image():
+    if request.method == "GET":
+        return render_template("upload_image.html", title="Bild hochladen")
+
+    file = request.files.get("image")
+    if not file:
+        abort(400, description="Kein Bild hochgeladen")
+
+    if not allowed_file(file.filename):
+        abort(400, description="Ungültiges Dateiformat (png, jpg, jpeg)")
+
+    save_path = UPLOAD_FOLDER / file.filename
+    file.save(save_path)
+
+    return jsonify({
+        "status": "success",
+        "saved_as": str(save_path)
+    })
+
+
+@app.route("/images/compare", methods=["GET", "POST"])
+def images_compare():
+    if request.method == "GET":
+        return render_template("compare_images.html", title="Bilder vergleichen")
+
+    file1 = request.files.get("image_before")
+    file2 = request.files.get("image_after")
+
+    if not file1 or not file2:
+        abort(400, description="Bitte zwei Bilder hochladen")
+
+    if not (allowed_file(file1.filename) and allowed_file(file2.filename)):
+        abort(400, description="Nur png/jpg/jpeg erlaubt")
+
+    save_path1 = UPLOAD_FOLDER / file1.filename
+    save_path2 = UPLOAD_FOLDER / file2.filename
+    file1.save(save_path1)
+    file2.save(save_path2)
+
+    result = compare_images(str(save_path1), str(save_path2))
+
+    return jsonify(result)
 
 
 if __name__ == "__main__":
