@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Bild hochladen</h1>
+
+<form action="{{ url_for('upload_image') }}" method="post" enctype="multipart/form-data">
+    <div>
+        <label for="image">Bild auswählen:</label><br>
+        <input type="file" name="image" id="image" required>
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Hochladen</button>
+</form>
+
+{% endblock %}
