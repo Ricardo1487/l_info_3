@@ -2,6 +2,10 @@ from datetime import date
 import os
 from flask import Flask, render_template, request, redirect, url_for, abort, jsonify
 
+from sqlalchemy import text
+from app.config.database import SessionLocal
+
+#loans importieren
 from app.services.loans import (
     list_loans,
     create_loan,
@@ -11,14 +15,18 @@ from app.services.loans import (
     get_planned_periods_for_box,
 
 )
-
+#boxes importieren
 from app.services.boxes import (
     get_box_id_by_code,
     create_box,
 )
+#photos_storage importieren
+from app.services.photos_storage import (
+    upload_temp_photo,
+    promote_temp_to_initial,
+    delete_temp_photo,
+)
 
-from sqlalchemy import text
-from app.config.database import SessionLocal
 
 app = Flask(__name__)
 
@@ -89,26 +97,24 @@ def save_loan():
     if not photo:
         abort(400, "Foto muss hochgeladen werden!")
 
-    # Foto temporär speichern
-    os.makedirs("uploads/tmp", exist_ok=True)
-    tmp_filename = f"tmp_{box_code}_{date.today()}.jpg"
-    tmp_path = os.path.join("uploads/tmp", tmp_filename)
-    photo.save(tmp_path)
+    # 🔹 Foto direkt nach Supabase in temp/ hochladen
+    temp_path = upload_temp_photo(photo, box_code)
 
     # Box existiert?
     existing_box_id = get_box_id_by_code(box_code)
 
     if existing_box_id is None:
+        # Box NICHT vorhanden → Bestätigungsseite
         return render_template(
             "confirm_new_box.html",
             title="Neue Box anlegen?",
             box_code=box_code,
-            tmp_filename=tmp_filename,
-            form_data=request.form
+            temp_path=temp_path,     # statt tmp_filename
+            form_data=request.form,
         )
 
-    # Box existiert → weiter
-    return process_loan_creation(existing_box_id, request.form, tmp_filename)
+    # Box existiert → direkt Leihe erstellen
+    return process_loan_creation(existing_box_id, request.form, temp_path)
 
 
 
@@ -119,7 +125,7 @@ def save_loan():
 def confirm_new_box():
     decision = request.form.get("decision")
     box_code = request.form.get("box_code")
-    tmp_filename = request.form.get("tmp_filename")
+    temp_path = request.form.get("temp_path")
 
     form_data = {
         "box_code": request.form.get("box_code"),
@@ -129,14 +135,14 @@ def confirm_new_box():
     }
 
     if decision == "no":
-        tmp_path = os.path.join("uploads/tmp", tmp_filename)
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
+        # Temp-Foto im Bucket löschen
+        if temp_path:
+            delete_temp_photo(temp_path)
         return render_template("new_loan.html", title="Neue Leihe")
 
     if decision == "yes":
         new_box_id = create_box(box_code)
-        return process_loan_creation(new_box_id, form_data, tmp_filename)
+        return process_loan_creation(new_box_id, form_data, temp_path)
 
     abort(400, "Ungültige Auswahl.")
 
@@ -145,20 +151,20 @@ def confirm_new_box():
 # ---------------------------------------------------
 # ZENTRALE LEIHE-ERSTELLUNG (mit Zeitüberschneidung!)
 # ---------------------------------------------------
-def process_loan_creation(box_id, form_data, tmp_filename):
+def process_loan_creation(box_id, form_data, temp_path):
 
     ausgabe = date.fromisoformat(form_data["ausgabe"])
     rueckgabe = date.fromisoformat(form_data["rueckgabe"])
 
-    # ❗ Ausgabedatum validieren
+    # Ausgabedatum validieren
     if ausgabe < date.today():
         abort(400, "Ausgabedatum kann nicht in der Vergangenheit liegen.")
 
-    # ❗ Rückgabedatum validieren
+    # Rückgabedatum validieren
     if rueckgabe < ausgabe:
         abort(400, "Rückgabedatum darf nicht vor dem Ausgabedatum liegen.")
 
-    # ❗ Überlappung prüfen (KALENDERLOGIK)
+    # Überlappung prüfen
     with SessionLocal() as session:
         overlap = session.execute(
             text("""
@@ -181,32 +187,39 @@ def process_loan_creation(box_id, form_data, tmp_filename):
         if overlap:
             abort(400, "Diese Box ist im angegebenen Zeitraum bereits ausgeliehen!")
 
-    # Foto verschieben
-    tmp_path = os.path.join("uploads/tmp", tmp_filename)
-    final_dir = "uploads"
-    os.makedirs(final_dir, exist_ok=True)
-
-    final_filename = f"loan_{box_id}_{date.today()}.jpg"
-    final_path = os.path.join(final_dir, final_filename)
-
-    if os.path.exists(tmp_path):
-        os.rename(tmp_path, final_path)
-    else:
-        abort(400, "Temporäres Foto nicht gefunden.")
-
-    # Leihe speichern
+    # 1️⃣ Leihe speichern
     email = form_data["email"]
 
-    create_loan(
+    loan_id = create_loan(
         box_id=box_id,
         contact_email=email,
         planned_start_date=ausgabe,
         planned_end_date=rueckgabe,
-        created_by_user_id=2
+        created_by_user_id=2,
     )
 
-    return redirect(url_for("home"))
+    # 2️⃣ Foto von temp/ → loans/<id>/initial_... verschieben
+    if not temp_path:
+        abort(400, "Kein temporärer Fotopfad übergeben.")
 
+    final_path = promote_temp_to_initial(temp_path, loan_id)
+
+    # 3️⃣ Foto-Eintrag in der DB (photos-Tabelle)
+    with SessionLocal() as session:
+        session.execute(
+            text("""
+                INSERT INTO photos (loan_id, type, file_path, created_by_user_id)
+                VALUES (:loan_id, 'INITIAL', :file_path, :user_id)
+            """),
+            {
+                "loan_id": loan_id,
+                "file_path": final_path,
+                "user_id": 2,
+            }
+        )
+        session.commit()
+
+    return redirect(url_for("home"))
 
 
 # ---------------------------------------------------
