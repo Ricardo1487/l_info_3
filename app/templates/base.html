@@ -1,26 +1,85 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="de" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>{{ title or "Boxenverwaltung" }}</title>
 
-    <!-- Styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+<body class="app-body">
 
-<body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <a href="{{ url_for('home') }}">Übersicht</a>
-        <a href="{{ url_for('new_loan') }}">Neue Leihe</a>
-    </nav>
+<!-- Top Navigation -->
+<header class="navbar">
+    <div class="nav-left">
+        <div class="logo-icon">📦</div>
+        <div class="logo-text">
+            <span class="logo-title">Boxenverwaltung</span>
+            <span class="logo-subtitle">Labor • Ausleihe</span>
+        </div>
+    </div>
 
-    <!-- Hauptinhalt -->
-    <main>
-        {% block content %}
-        {% endblock %}
-    </main>
+    <div class="nav-right">
+        <nav class="nav-links">
+            <a href="{{ url_for('home') }}" class="nav-link">Übersicht</a>
+            <a href="{{ url_for('new_loan') }}" class="nav-link nav-link-primary">Neue Leihe</a>
+        </nav>
+
+        <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Theme wechseln">
+            <span class="theme-icon" id="theme-icon">🌙</span>
+        </button>
+    </div>
+</header>
+
+<!-- Hauptinhalt -->
+<main class="app-main">
+    {% block content %}{% endblock %}
+</main>
+
+<!-- Bottom Navigation (nur Mobile) -->
+<nav class="bottom-nav">
+    <a href="{{ url_for('home') }}" class="bottom-nav-item">
+        <span class="bottom-nav-icon">🏠</span>
+        <span class="bottom-nav-label">Übersicht</span>
+    </a>
+    <a href="{{ url_for('new_loan') }}" class="bottom-nav-item">
+        <span class="bottom-nav-icon">➕</span>
+        <span class="bottom-nav-label">Neu</span>
+    </a>
+</nav>
+
+<!-- Theme Toggle Script -->
+<script>
+    (function () {
+        const html = document.documentElement;
+        const btn = document.getElementById('theme-toggle');
+        const icon = document.getElementById('theme-icon');
+
+        function setTheme(theme) {
+            html.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+            if (icon) {
+                icon.textContent = theme === 'dark' ? '🌙' : '☀️';
+            }
+        }
+
+        // Initial aus LocalStorage
+        const saved = localStorage.getItem('theme');
+        if (saved === 'light' || saved === 'dark') {
+            setTheme(saved);
+        } else {
+            setTheme('dark');
+        }
+
+        if (btn) {
+            btn.addEventListener('click', function () {
+                const current = html.getAttribute('data-theme') || 'dark';
+                setTheme(current === 'dark' ? 'light' : 'dark');
+            });
+        }
+    })();
+</script>
+
 </body>
 </html>
+

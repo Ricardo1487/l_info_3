@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="card">
+    <h2>Neue Box anlegen?</h2>
+
+    <p>Die Box <strong>{{ box_code }}</strong> existiert noch nicht.</p>
+    <p>Möchten Sie diese Box jetzt anlegen?</p>
+
+    <form action="{{ url_for('confirm_new_box') }}" method="post">
+
+        <input type="hidden" name="box_code" value="{{ box_code }}">
+        <!-- 🔹 HIER: tmp_filename → temp_path -->
+        <input type="hidden" name="temp_path" value="{{ temp_path }}">
+
+        {% for key, value in form_data.items() %}
+            <input type="hidden" name="{{ key }}" value="{{ value }}">
+        {% endfor %}
+
+        <button name="decision" value="yes" class="btn-primary full-width">
+            Ja, Box anlegen
+        </button>
+        <button name="decision" value="no" class="btn-secondary full-width" style="margin-top:10px;">
+            Nein, zurück
+        </button>
+    </form>
+</section>
+
+{% endblock %}

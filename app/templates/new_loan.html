@@ -1,21 +1,373 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>Neue Leihe starten</h2>
 
-<form action="{{ url_for('save_loan') }}" method="post">
-  <label>Box-ID:</label>
-  <input type="text" name="box_id" required><br>
+{% if error %}
+<div class="error-box">
+    {{ error }}
+</div>
+{% endif %}
 
-  <label>E-Mail:</label>
-  <input type="email" name="email" required><br>
+<style>
+.error-box {
+  background: rgba(255, 70, 70, 0.2);
+  border: 1px solid rgba(255, 80, 80, 0.4);
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  color: #ffcccc;
+  font-weight: 600;
+}
+</style>
 
-  <label>Ausgabedatum:</label>
-  <input type="date" name="ausgabe" required><br>
 
-  <label>Rückgabedatum:</label>
-  <input type="date" name="rueckgabe" required><br>
+<section class="page-header">
+    <h1 class="page-title">Neue Leihe</h1>
+</section>
 
-  <button type="submit">Leihe speichern</button>
+<section class="card">
+
+<form id="new-loan-form" action="{{ url_for('save_loan') }}" method="post" enctype="multipart/form-data" class="form">
+
+    <!-- Box-Code -->
+    <div class="form-group">
+        <label for="box_code">Box-Code</label>
+        <input id="box_code" name="box_code" type="text" placeholder="BOX-001" required>
+    </div>
+
+    <!-- Kontakt -->
+    <div class="form-group">
+        <label for="email">E-Mail</label>
+        <input id="email" name="email" type="email" required>
+    </div>
+
+    <!-- Verfügbarkeitskalender -->
+    <div class="form-group">
+        <label>Verfügbarkeit dieser Box</label>
+        <div id="availability-calendar" class="availability-calendar">
+            <p class="cal-placeholder">Bitte Box-Code eingeben.</p>
+        </div>
+    </div>
+
+    <!-- Datumsfelder (werden vom Kalender gesetzt, können aber auch manuell) -->
+    <div class="form-group-inline">
+        <div class="form-group">
+            <label for="ausgabe">Ausgabe</label>
+            <input id="ausgabe" name="ausgabe" type="date" required>
+        </div>
+
+        <div class="form-group">
+            <label for="rueckgabe">Rückgabe</label>
+            <input id="rueckgabe" name="rueckgabe" type="date" required>
+        </div>
+    </div>
+
+    <!-- Foto -->
+    <div class="form-group">
+        <label for="photo">Foto der Box</label>
+        <input id="photo" type="file" name="photo" accept="image/*" required>
+    </div>
+
+    <button class="btn-primary full-width">Leihe speichern</button>
+
 </form>
+
+</section>
+
+<!-- ============================
+       KALENDER STYLING
+============================= -->
+<style>
+.availability-calendar {
+  background: rgba(15,23,42,0.45);
+  padding: 1rem;
+  border-radius: 10px;
+  color: #e2e8f0;
+}
+
+.cal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: .8rem;
+}
+
+.cal-title {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.cal-nav {
+  background: rgba(255,255,255,0.1);
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: white;
+  font-size: 0.9rem;
+}
+.cal-nav:hover { background: rgba(255,255,255,0.2); }
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7,1fr);
+  gap: 6px;
+}
+
+.cal-day-header {
+  text-align: center;
+  opacity: .6;
+  font-size: 0.8rem;
+}
+
+.cal-day {
+  padding: 8px 0;
+  text-align: center;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: .9rem;
+}
+
+.cal-day.free { background: rgba(34,197,94,0.25); }
+.cal-day.busy { background: rgba(248,113,113,0.3); cursor: not-allowed; }
+.cal-day.past { background: rgba(120,120,120,0.25); cursor: not-allowed; opacity: .5; }
+
+.cal-day.selected {
+  background: rgba(59,130,246,0.8) !important;
+  color: white;
+  font-weight: 600;
+}
+
+.cal-day.free:hover {
+  background: rgba(96,165,250,0.6);
+}
+</style>
+
+<!-- ============================
+       KALENDER LOGIK (JS)
+============================= -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+    const boxInput  = document.getElementById("box_code");
+    const ausgabe   = document.getElementById("ausgabe");
+    const rueckgabe = document.getElementById("rueckgabe");
+    const calendar  = document.getElementById("availability-calendar");
+
+    let periods = [];              // [{ start: 'YYYY-MM-DD', end: 'YYYY-MM-DD' }, ...]
+    let selectedStart = null;      // 'YYYY-MM-DD'
+    let selectedEnd   = null;      // 'YYYY-MM-DD'
+
+    // ===== Datum-Helpers (OHNE Zeitzone) =====
+    function pad(n) {
+        return n < 10 ? "0" + n : "" + n;
+    }
+    function formatYMD(y, m, d) {
+        // m = 1..12
+        return y + "-" + pad(m) + "-" + pad(d);
+    }
+    function todayIso() {
+        const now = new Date();
+        return formatYMD(now.getFullYear(), now.getMonth() + 1, now.getDate());
+    }
+
+    const todayStr = todayIso();
+    ausgabe.value = todayStr;
+    ausgabe.min   = todayStr;
+    rueckgabe.min = todayStr;
+
+    // ===== String-Vergleiche, weil 'YYYY-MM-DD' lexikographisch sortiert =====
+    function isPast(iso) {
+        return iso < todayStr;
+    }
+    function isBusy(iso) {
+        return periods.some(p => iso >= p.start && iso <= p.end);
+    }
+    function isInSelection(iso) {
+        if (selectedStart && !selectedEnd) {
+            return iso === selectedStart;
+        }
+        if (selectedStart && selectedEnd) {
+            return iso >= selectedStart && iso <= selectedEnd;
+        }
+        return false;
+    }
+
+    // ===== Auswahl-Logik =====
+    function handleDayClick(iso) {
+        if (isPast(iso) || isBusy(iso)) return;
+
+        // kein Start bisher
+        if (!selectedStart) {
+            selectedStart = iso;
+            selectedEnd   = null;
+            ausgabe.value = selectedStart;
+            rueckgabe.value = "";
+            rueckgabe.min = selectedStart;
+            renderCalendar(currentYear, currentMonth);
+            return;
+        }
+
+        // Start gesetzt, End noch nicht
+        if (!selectedEnd) {
+            if (iso < selectedStart) {
+                selectedEnd   = selectedStart;
+                selectedStart = iso;
+            } else {
+                selectedEnd = iso;
+            }
+            ausgabe.value   = selectedStart;
+            rueckgabe.value = selectedEnd;
+            rueckgabe.min   = selectedStart;
+            renderCalendar(currentYear, currentMonth);
+            return;
+        }
+
+        // beides gesetzt → neue Auswahl beginnen
+        selectedStart = iso;
+        selectedEnd   = null;
+        ausgabe.value = selectedStart;
+        rueckgabe.value = "";
+        rueckgabe.min = selectedStart;
+        renderCalendar(currentYear, currentMonth);
+    }
+
+    // Wenn der User Felder manuell ändert, soll der Kalender nicht crashen
+    ausgabe.addEventListener("change", () => {
+        if (!ausgabe.value) return;
+        if (ausgabe.value < todayStr) ausgabe.value = todayStr;
+        rueckgabe.min = ausgabe.value;
+        if (rueckgabe.value && rueckgabe.value < ausgabe.value) {
+            rueckgabe.value = ausgabe.value;
+        }
+        selectedStart = ausgabe.value;
+        selectedEnd   = rueckgabe.value || null;
+        renderCalendar(currentYear, currentMonth);
+    });
+
+    rueckgabe.addEventListener("change", () => {
+        if (!rueckgabe.value) return;
+        if (rueckgabe.value < ausgabe.value) {
+            rueckgabe.value = ausgabe.value;
+        }
+        selectedStart = ausgabe.value;
+        selectedEnd   = rueckgabe.value;
+        renderCalendar(currentYear, currentMonth);
+    });
+
+    // ===== Box-Verfügbarkeit laden =====
+    boxInput.addEventListener("change", fetchAvailability);
+    boxInput.addEventListener("blur", fetchAvailability);
+
+    async function fetchAvailability() {
+        const code = boxInput.value.trim();
+        if (!code) {
+            calendar.innerHTML = "<p class='cal-placeholder'>Bitte Box-Code eingeben.</p>";
+            return;
+        }
+
+        const res  = await fetch(`/api/box/${encodeURIComponent(code)}/availability`);
+        const data = await res.json();
+        periods    = data.periods || [];
+
+        currentYear  = new Date().getFullYear();
+        currentMonth = new Date().getMonth(); // 0..11
+
+        selectedStart = ausgabe.value || null;
+        selectedEnd   = rueckgabe.value || null;
+
+        renderCalendar(currentYear, currentMonth);
+    }
+
+    // ===== Monatsnavigation =====
+    const MONTH_NAMES = [
+        "Januar","Februar","März","April","Mai","Juni",
+        "Juli","August","September","Oktober","November","Dezember"
+    ];
+
+    let currentYear  = new Date().getFullYear();
+    let currentMonth = new Date().getMonth(); // 0..11
+
+    function prevMonth() {
+        currentMonth--;
+        if (currentMonth < 0) {
+            currentMonth = 11;
+            currentYear--;
+        }
+        renderCalendar(currentYear, currentMonth);
+    }
+
+    function nextMonth() {
+        currentMonth++;
+        if (currentMonth > 11) {
+            currentMonth = 0;
+            currentYear++;
+        }
+        renderCalendar(currentYear, currentMonth);
+    }
+
+    // ===== Kalender rendern (ZEITZONENFREI) =====
+    function renderCalendar(year, monthIndex) {
+        const first = new Date(year, monthIndex, 1);
+        const last  = new Date(year, monthIndex + 1, 0);
+        const daysInMonth = last.getDate();
+
+        let html = `
+            <div class="cal-header">
+                <button class="cal-nav" id="prev-month">&lt;</button>
+                <span class="cal-title">${MONTH_NAMES[monthIndex]} ${year}</span>
+                <button class="cal-nav" id="next-month">&gt;</button>
+            </div>
+
+            <div class="cal-grid">
+                <div class="cal-day-header">Mo</div>
+                <div class="cal-day-header">Di</div>
+                <div class="cal-day-header">Mi</div>
+                <div class="cal-day-header">Do</div>
+                <div class="cal-day-header">Fr</div>
+                <div class="cal-day-header">Sa</div>
+                <div class="cal-day-header">So</div>
+        `;
+
+        // Wochentag-Offset (Mo=0)
+        const offset = (first.getDay() + 6) % 7;
+        for (let i = 0; i < offset; i++) html += "<div></div>";
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            const iso = formatYMD(year, monthIndex + 1, d);  // MANUELLES Format, kein toISOString!
+
+            let cls = "cal-day ";
+
+            if (isPast(iso)) {
+                cls += "past";
+            } else if (isBusy(iso)) {
+                cls += "busy";
+            } else {
+                cls += "free";
+            }
+
+            if (isInSelection(iso)) {
+                cls += " selected";
+            }
+
+            html += `<div class="${cls}" data-date="${iso}">${d}</div>`;
+        }
+
+        html += "</div>";
+        calendar.innerHTML = html;
+
+        document.getElementById("prev-month").onclick = prevMonth;
+        document.getElementById("next-month").onclick = nextMonth;
+
+        document.querySelectorAll(".cal-day.free")
+            .forEach(el => {
+                el.onclick = () => handleDayClick(el.dataset.date);
+            });
+    }
+
+    // Erste Renderung (falls direkt ohne Box-Auswahl getestet wird, sieht man schon Kalender)
+    renderCalendar(currentYear, currentMonth);
+});
+</script>
+
 {% endblock %}
