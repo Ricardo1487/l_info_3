@@ -1,10 +1,14 @@
 <!DOCTYPE html>
-<html lang="de" data-theme="dark">
+<html lang="de" data-theme="themeMountain">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title or "Boxenverwaltung" }}</title>
 
+    <!-- Satoshi Font (Fontshare) -->
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700&display=swap">
+
+    <!-- Main Styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body class="app-body">
@@ -25,8 +29,9 @@
             <a href="{{ url_for('new_loan') }}" class="nav-link nav-link-primary">Neue Leihe</a>
         </nav>
 
+        <!-- Theme Toggle: Mountain ⇄ Forest -->
         <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Theme wechseln">
-            <span class="theme-icon" id="theme-icon">🌙</span>
+            <span id="theme-toggle-label">M</span>
         </button>
     </div>
 </header>
@@ -48,38 +53,38 @@
     </a>
 </nav>
 
-<!-- Theme Toggle Script -->
+<!-- Theme Switch Script -->
 <script>
-    (function () {
-        const html = document.documentElement;
-        const btn = document.getElementById('theme-toggle');
-        const icon = document.getElementById('theme-icon');
+(function () {
+    const html   = document.documentElement;
+    const toggle = document.getElementById("theme-toggle");
+    const label  = document.getElementById("theme-toggle-label");
 
-        function setTheme(theme) {
-            html.setAttribute('data-theme', theme);
-            localStorage.setItem('theme', theme);
-            if (icon) {
-                icon.textContent = theme === 'dark' ? '🌙' : '☀️';
-            }
-        }
+    const THEMES = ["themeMountain", "themeForest"];
 
-        // Initial aus LocalStorage
-        const saved = localStorage.getItem('theme');
-        if (saved === 'light' || saved === 'dark') {
-            setTheme(saved);
-        } else {
-            setTheme('dark');
+    function setTheme(theme) {
+        html.setAttribute("data-theme", theme);
+        localStorage.setItem("theme", theme);
+        if (label) {
+            label.textContent = theme === "themeMountain" ? "M" : "F";
         }
+    }
 
-        if (btn) {
-            btn.addEventListener('click', function () {
-                const current = html.getAttribute('data-theme') || 'dark';
-                setTheme(current === 'dark' ? 'light' : 'dark');
-            });
-        }
-    })();
+    let saved = localStorage.getItem("theme");
+    if (!saved || !THEMES.includes(saved)) {
+        saved = "themeMountain";
+    }
+    setTheme(saved);
+
+    if (toggle) {
+        toggle.addEventListener("click", () => {
+            const current = html.getAttribute("data-theme") || "themeMountain";
+            const next = current === "themeMountain" ? "themeForest" : "themeMountain";
+            setTheme(next);
+        });
+    }
+})();
 </script>
 
 </body>
 </html>
-
