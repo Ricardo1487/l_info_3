@@ -1,3 +1,7 @@
+from dotenv import load_dotenv #erg
+
+load_dotenv() #erg
+
 from datetime import date
 import os
 from flask import Flask, render_template, request, redirect, url_for, abort, jsonify
@@ -36,8 +40,72 @@ app = Flask(__name__)
 # ---------------------------------------------------
 @app.route("/")
 def home():
+    # Filterwerte aus der URL lesen
+    sort = request.args.get("sort", "").strip()
+    contact = request.args.get("contact", "").strip()
+
+    # Alle Leihen wie bisher laden
     loans = list_loans()
-    return render_template("index.html", title="Übersicht", loans=loans)
+
+    # -------------------------------
+    # 1) Nach Kontakt (E-Mail) filtern
+    # -------------------------------
+    if contact:
+        search = contact.lower()
+
+        def get_contact_value(loan):
+            value = getattr(loan, "contact_email", None)
+            return value.lower() if isinstance(value, str) else ""
+
+        loans = [loan for loan in loans if search in get_contact_value(loan)]
+
+    # -------------------------------
+    # 2) Sortierfunktionen definieren
+    # -------------------------------
+    def get_issue_date(loan):
+        # Ausgabedatum (geplant)
+        return getattr(loan, "planned_start_date", None)
+
+    def get_return_date(loan):
+        # Rückgabedatum (geplant)
+        return getattr(loan, "planned_end_date", None)
+
+    # -------------------------------
+    # 3) Sortierung anwenden
+    # -------------------------------
+    if sort == "issue_date_asc":
+        loans = sorted(
+            loans,
+            key=lambda l: get_issue_date(l) or date.max
+        )
+    elif sort == "issue_date_desc":
+        loans = sorted(
+            loans,
+            key=lambda l: get_issue_date(l) or date.min,
+            reverse=True,
+        )
+    elif sort == "return_date_asc":
+        loans = sorted(
+            loans,
+            key=lambda l: get_return_date(l) or date.max
+        )
+    elif sort == "return_date_desc":
+        loans = sorted(
+            loans,
+            key=lambda l: get_return_date(l) or date.min,
+            reverse=True,
+        )
+
+    # -------------------------------
+    # 4) Template rendern
+    # -------------------------------
+    return render_template(
+        "index.html",
+        title="Übersicht",
+        loans=loans,
+        current_sort=sort,
+        current_contact=contact,
+    )
 
 
 
