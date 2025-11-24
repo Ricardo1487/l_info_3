@@ -1,59 +1,112 @@
 # app/services/photos_storage.py
 
 import os
-import uuid
-from supabase import create_client
+from datetime import datetime
+from typing import Optional
 
+from supabase import create_client, Client
+
+# -------------------------------
+# Supabase-Konfiguration
+# -------------------------------
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "photos")
 
 if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-    raise RuntimeError("Supabase-Konfiguration fehlt (SUPABASE_URL / SUPABASE_SERVICE_KEY).")
+    raise RuntimeError(
+        "SUPABASE_URL oder SUPABASE_SERVICE_KEY nicht gesetzt. "
+        "Bitte in der .env und den Render-Env-Variablen hinterlegen."
+    )
 
-supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 
+def _sanitize_box_code(box_code: str) -> str:
+    """Erlaubt nur einfache Zeichen im Dateinamen."""
+    return "".join(c for c in box_code if c.isalnum() or c in ("-", "_"))  ###fix der unterstiche
+
+
+# -------------------------------------------------
+# 1) Upload eines Fotos in temp/ im Bucket
+# -------------------------------------------------
 def upload_temp_photo(file_storage, box_code: str) -> str:
     """
-    Lädt ein Foto direkt in den Supabase-Bucket unter einem temp-Pfad hoch.
-    file_storage: Flask FileStorage (request.files["photo"])
-    Rückgabe: Pfad im Bucket, z. B. "temp/BOX-001/<uuid>.jpg"
+    Nimmt ein Flask-FileStorage-Objekt (photo) entgegen,
+    speichert es kurz lokal und lädt es dann in den Supabase-Bucket
+    unter temp/ hoch.
+
+    Rückgabe:
+      - bucket_key, z.B. "temp/BOX-001_20251123_183012_originalname.jpg"
     """
-    ext = ".jpg"  # erstmal fest, später könnte man mimetype auswerten
-    filename = f"{uuid.uuid4()}{ext}"
+    safe_code = _sanitize_box_code(box_code or "BOX")
 
-    # Pfad im Bucket
-    storage_path = f"temp/{box_code}/{filename}"
+    # Dateiname vorbereiten
+    original_name = file_storage.filename or "upload.jpg"
+    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    local_filename = f"{safe_code}_{ts}_{original_name}"
 
-    # Upload direkt aus dem FileStorage-Stream
-    supabase.storage.from_(SUPABASE_BUCKET).upload(
-        storage_path,
-        file_storage.stream,
-    )
+    # Lokaler Temp-Pfad (nutzen wir /tmp, das gibt es auch bei Render)
+    tmp_dir = "/tmp"
+    os.makedirs(tmp_dir, exist_ok=True)
+    local_path = os.path.join(tmp_dir, local_filename)
 
-    return storage_path
+    # 1) Upload-Objekt auf Platte schreiben
+    file_storage.save(local_path)
+
+    # 2) Bucket-Key (Pfad im Supabase-Bucket)
+    bucket_key = f"temp/{local_filename}"
+
+    # 3) In Supabase hochladen – die Library erwartet einen Pfad (str)
+    supabase.storage.from_(SUPABASE_BUCKET).upload(bucket_key, local_path)
+
+    # 4) Lokale Datei wieder entfernen
+    try:
+        os.remove(local_path)
+    except FileNotFoundError:
+        pass
+
+    return bucket_key
 
 
-def promote_temp_to_initial(temp_path: str, loan_id: int) -> str:
+# -------------------------------------------------
+# 2) temp/ → loans/<loan_id>/initial_... verschieben
+# -------------------------------------------------
+def promote_temp_to_initial(temp_key: str, loan_id: int) -> str:
     """
-    Verschiebt eine Datei von temp/… zu loans/<loan_id>/initial_<filename>.jpg
-    im gleichen Bucket.
-    Rückgabe: neuer Pfad im Bucket.
+    Verschiebt ein Bild im Bucket von temp/ nach loans/<loan_id>/initial_...
+
+    temp_key:
+      - z.B. "temp/BOX-001_20251123_183012_upload.jpg"
+
+    Rückgabe:
+      - final_key, z.B. "loans/42/initial_BOX-001_20251123_183012_upload.jpg"
     """
-    base_name = temp_path.split("/")[-1]  # z.B. "abc123.jpg"
-    final_path = f"loans/{loan_id}/initial_{base_name}"
+    file_name = os.path.basename(temp_key)
+    final_key = f"loans/{loan_id}/initial_{file_name}"
 
-    supabase.storage.from_(SUPABASE_BUCKET).move(
-        temp_path,
-        final_path,
-    )
+    supabase.storage.from_(SUPABASE_BUCKET).move(temp_key, final_key)
 
-    return final_path
+    return final_key
 
 
-def delete_temp_photo(temp_path: str) -> None:
+# -------------------------------------------------
+# 3) Temp-Foto verwerfen
+# -------------------------------------------------
+def delete_temp_photo(temp_key: Optional[str]) -> None:
     """
-    Löscht eine temporäre Datei aus dem Bucket.
+    Löscht ein temporäres Foto im Bucket (wenn der User z.B. "Nein"
+    bei 'Neue Box anlegen?' klickt).
+
+    Fehler (z.B. Datei schon weg) werden still ignoriert.
     """
-    supabase.storage.from_(SUPABASE_BUCKET).remove([temp_path])
+    if not temp_key:
+        return
+
+    try:
+        # remove erwartet eine Liste von Pfaden
+        supabase.storage.from_(SUPABASE_BUCKET).remove([temp_key])
+    except Exception:
+        # Für euer Uni-Projekt reicht es, hier still zu schlucken.
+        # Optional: logging einbauen.
+        pass
