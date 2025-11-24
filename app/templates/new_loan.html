@@ -20,14 +20,13 @@
 }
 </style>
 
-
 <section class="page-header">
     <h1 class="page-title">Neue Leihe</h1>
 </section>
 
 <section class="card">
 
-<form id="new-loan-form" action="{{ url_for('save_loan') }}" method="post" enctype="multipart/form-data" class="form">
+<form id="new-loan-form" action="{{ url_for('save_loan') }}" method="post" class="form">
 
     <!-- Box-Code -->
     <div class="form-group">
@@ -49,7 +48,7 @@
         </div>
     </div>
 
-    <!-- Datumsfelder (werden vom Kalender gesetzt, können aber auch manuell) -->
+    <!-- Datumsfelder -->
     <div class="form-group-inline">
         <div class="form-group">
             <label for="ausgabe">Ausgabe</label>
@@ -62,12 +61,6 @@
         </div>
     </div>
 
-    <!-- Foto -->
-    <div class="form-group">
-        <label for="photo">Foto der Box</label>
-        <input id="photo" type="file" name="photo" accept="image/*" required>
-    </div>
-
     <button class="btn-primary full-width">Leihe speichern</button>
 
 </form>
@@ -78,25 +71,23 @@
        KALENDER STYLING
 ============================= -->
 <style>
+/* komplette Kalender-CSS unverändert */
 .availability-calendar {
   background: rgba(15,23,42,0.45);
   padding: 1rem;
   border-radius: 10px;
   color: #e2e8f0;
 }
-
 .cal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: .8rem;
 }
-
 .cal-title {
   font-weight: 700;
   font-size: 1.1rem;
 }
-
 .cal-nav {
   background: rgba(255,255,255,0.1);
   border: none;
@@ -107,19 +98,16 @@
   font-size: 0.9rem;
 }
 .cal-nav:hover { background: rgba(255,255,255,0.2); }
-
 .cal-grid {
   display: grid;
   grid-template-columns: repeat(7,1fr);
   gap: 6px;
 }
-
 .cal-day-header {
   text-align: center;
   opacity: .6;
   font-size: 0.8rem;
 }
-
 .cal-day {
   padding: 8px 0;
   text-align: center;
@@ -127,17 +115,14 @@
   cursor: pointer;
   font-size: .9rem;
 }
-
 .cal-day.free { background: rgba(34,197,94,0.25); }
 .cal-day.busy { background: rgba(248,113,113,0.3); cursor: not-allowed; }
 .cal-day.past { background: rgba(120,120,120,0.25); cursor: not-allowed; opacity: .5; }
-
 .cal-day.selected {
   background: rgba(59,130,246,0.8) !important;
   color: white;
   font-weight: 600;
 }
-
 .cal-day.free:hover {
   background: rgba(96,165,250,0.6);
 }
@@ -147,25 +132,20 @@
        KALENDER LOGIK (JS)
 ============================= -->
 <script>
+/* komplette JS unverändert */
 document.addEventListener("DOMContentLoaded", () => {
-
     const boxInput  = document.getElementById("box_code");
     const ausgabe   = document.getElementById("ausgabe");
     const rueckgabe = document.getElementById("rueckgabe");
     const calendar  = document.getElementById("availability-calendar");
 
-    let periods = [];              // [{ start: 'YYYY-MM-DD', end: 'YYYY-MM-DD' }, ...]
-    let selectedStart = null;      // 'YYYY-MM-DD'
-    let selectedEnd   = null;      // 'YYYY-MM-DD'
+    let periods = [];
+    let selectedStart = null;
+    let selectedEnd   = null;
 
-    // ===== Datum-Helpers (OHNE Zeitzone) =====
-    function pad(n) {
-        return n < 10 ? "0" + n : "" + n;
-    }
-    function formatYMD(y, m, d) {
-        // m = 1..12
-        return y + "-" + pad(m) + "-" + pad(d);
-    }
+    function pad(n) { return n < 10 ? "0" + n : "" + n; }
+    function formatYMD(y, m, d) { return y + "-" + pad(m) + "-" + pad(d); }
+
     function todayIso() {
         const now = new Date();
         return formatYMD(now.getFullYear(), now.getMonth() + 1, now.getDate());
@@ -176,31 +156,20 @@ document.addEventListener("DOMContentLoaded", () => {
     ausgabe.min   = todayStr;
     rueckgabe.min = todayStr;
 
-    // ===== String-Vergleiche, weil 'YYYY-MM-DD' lexikographisch sortiert =====
-    function isPast(iso) {
-        return iso < todayStr;
-    }
-    function isBusy(iso) {
-        return periods.some(p => iso >= p.start && iso <= p.end);
-    }
+    function isPast(iso) { return iso < todayStr; }
+    function isBusy(iso) { return periods.some(p => iso >= p.start && iso <= p.end); }
     function isInSelection(iso) {
-        if (selectedStart && !selectedEnd) {
-            return iso === selectedStart;
-        }
-        if (selectedStart && selectedEnd) {
-            return iso >= selectedStart && iso <= selectedEnd;
-        }
+        if (selectedStart && !selectedEnd) return iso === selectedStart;
+        if (selectedStart && selectedEnd)  return iso >= selectedStart && iso <= selectedEnd;
         return false;
     }
 
-    // ===== Auswahl-Logik =====
     function handleDayClick(iso) {
         if (isPast(iso) || isBusy(iso)) return;
 
-        // kein Start bisher
         if (!selectedStart) {
             selectedStart = iso;
-            selectedEnd   = null;
+            selectedEnd = null;
             ausgabe.value = selectedStart;
             rueckgabe.value = "";
             rueckgabe.min = selectedStart;
@@ -208,7 +177,6 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        // Start gesetzt, End noch nicht
         if (!selectedEnd) {
             if (iso < selectedStart) {
                 selectedEnd   = selectedStart;
@@ -223,7 +191,6 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        // beides gesetzt → neue Auswahl beginnen
         selectedStart = iso;
         selectedEnd   = null;
         ausgabe.value = selectedStart;
@@ -232,7 +199,6 @@ document.addEventListener("DOMContentLoaded", () => {
         renderCalendar(currentYear, currentMonth);
     }
 
-    // Wenn der User Felder manuell ändert, soll der Kalender nicht crashen
     ausgabe.addEventListener("change", () => {
         if (!ausgabe.value) return;
         if (ausgabe.value < todayStr) ausgabe.value = todayStr;
@@ -255,7 +221,6 @@ document.addEventListener("DOMContentLoaded", () => {
         renderCalendar(currentYear, currentMonth);
     });
 
-    // ===== Box-Verfügbarkeit laden =====
     boxInput.addEventListener("change", fetchAvailability);
     boxInput.addEventListener("blur", fetchAvailability);
 
@@ -266,12 +231,12 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        const res  = await fetch(`/api/box/${encodeURIComponent(code)}/availability`);
+        const res = await fetch(`/api/box/${encodeURIComponent(code)}/availability`);
         const data = await res.json();
-        periods    = data.periods || [];
+        periods = data.periods || [];
 
         currentYear  = new Date().getFullYear();
-        currentMonth = new Date().getMonth(); // 0..11
+        currentMonth = new Date().getMonth();
 
         selectedStart = ausgabe.value || null;
         selectedEnd   = rueckgabe.value || null;
@@ -279,34 +244,23 @@ document.addEventListener("DOMContentLoaded", () => {
         renderCalendar(currentYear, currentMonth);
     }
 
-    // ===== Monatsnavigation =====
-    const MONTH_NAMES = [
-        "Januar","Februar","März","April","Mai","Juni",
-        "Juli","August","September","Oktober","November","Dezember"
-    ];
+    const MONTH_NAMES = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
 
     let currentYear  = new Date().getFullYear();
-    let currentMonth = new Date().getMonth(); // 0..11
+    let currentMonth = new Date().getMonth();
 
     function prevMonth() {
         currentMonth--;
-        if (currentMonth < 0) {
-            currentMonth = 11;
-            currentYear--;
-        }
+        if (currentMonth < 0) { currentMonth = 11; currentYear--; }
         renderCalendar(currentYear, currentMonth);
     }
 
     function nextMonth() {
         currentMonth++;
-        if (currentMonth > 11) {
-            currentMonth = 0;
-            currentYear++;
-        }
+        if (currentMonth > 11) { currentMonth = 0; currentYear++; }
         renderCalendar(currentYear, currentMonth);
     }
 
-    // ===== Kalender rendern (ZEITZONENFREI) =====
     function renderCalendar(year, monthIndex) {
         const first = new Date(year, monthIndex, 1);
         const last  = new Date(year, monthIndex + 1, 0);
@@ -329,26 +283,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div class="cal-day-header">So</div>
         `;
 
-        // Wochentag-Offset (Mo=0)
         const offset = (first.getDay() + 6) % 7;
         for (let i = 0; i < offset; i++) html += "<div></div>";
 
         for (let d = 1; d <= daysInMonth; d++) {
-            const iso = formatYMD(year, monthIndex + 1, d);  // MANUELLES Format, kein toISOString!
+            const iso = formatYMD(year, monthIndex + 1, d);
 
             let cls = "cal-day ";
+            if (isPast(iso)) cls += "past";
+            else if (isBusy(iso)) cls += "busy";
+            else cls += "free";
 
-            if (isPast(iso)) {
-                cls += "past";
-            } else if (isBusy(iso)) {
-                cls += "busy";
-            } else {
-                cls += "free";
-            }
-
-            if (isInSelection(iso)) {
-                cls += " selected";
-            }
+            if (isInSelection(iso)) cls += " selected";
 
             html += `<div class="${cls}" data-date="${iso}">${d}</div>`;
         }
@@ -359,13 +305,11 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("prev-month").onclick = prevMonth;
         document.getElementById("next-month").onclick = nextMonth;
 
-        document.querySelectorAll(".cal-day.free")
-            .forEach(el => {
-                el.onclick = () => handleDayClick(el.dataset.date);
-            });
+        document.querySelectorAll(".cal-day.free").forEach(el => {
+            el.onclick = () => handleDayClick(el.dataset.date);
+        });
     }
 
-    // Erste Renderung (falls direkt ohne Box-Auswahl getestet wird, sieht man schon Kalender)
     renderCalendar(currentYear, currentMonth);
 });
 </script>
