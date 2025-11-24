@@ -26,18 +26,27 @@
 
 <section class="card">
 
-<form id="new-loan-form" action="{{ url_for('save_loan') }}" method="post" class="form">
+<form id="new-loan-form" action="{{ url_for('start_loan') }}" method="post" class="form">
 
     <!-- Box-Code -->
     <div class="form-group">
         <label for="box_code">Box-Code</label>
-        <input id="box_code" name="box_code" type="text" placeholder="BOX-001" required>
+        <input id="box_code"
+               name="box_code"
+               type="text"
+               placeholder="BOX-001"
+               value="{{ box_code or '' }}"
+               required>
     </div>
 
     <!-- Kontakt -->
     <div class="form-group">
         <label for="email">E-Mail</label>
-        <input id="email" name="email" type="email" required>
+        <input id="email"
+               name="email"
+               type="email"
+               value="{{ email or '' }}"
+               required>
     </div>
 
     <!-- Verfügbarkeitskalender -->
@@ -52,16 +61,24 @@
     <div class="form-group-inline">
         <div class="form-group">
             <label for="ausgabe">Ausgabe</label>
-            <input id="ausgabe" name="ausgabe" type="date" required>
+            <input id="ausgabe"
+                   name="ausgabe"
+                   type="date"
+                   value="{{ ausgabe or current_date }}"
+                   required>
         </div>
 
         <div class="form-group">
             <label for="rueckgabe">Rückgabe</label>
-            <input id="rueckgabe" name="rueckgabe" type="date" required>
+            <input id="rueckgabe"
+                   name="rueckgabe"
+                   type="date"
+                   value="{{ rueckgabe or '' }}"
+                   required>
         </div>
     </div>
 
-    <button class="btn-primary full-width">Leihe speichern</button>
+    <button class="btn-primary full-width">Weiter zum Foto</button>
 
 </form>
 
@@ -152,9 +169,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const todayStr = todayIso();
-    ausgabe.value = todayStr;
+    if (!ausgabe.value) {
+        ausgabe.value = todayStr;
+    }
     ausgabe.min   = todayStr;
-    rueckgabe.min = todayStr;
+    if (!rueckgabe.value) {
+        rueckgabe.min = todayStr;
+    }
 
     function isPast(iso) { return iso < todayStr; }
     function isBusy(iso) { return periods.some(p => iso >= p.start && iso <= p.end); }

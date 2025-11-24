@@ -1,22 +1,13 @@
-from dotenv import load_dotenv
-
-load_dotenv()  # .env laden (lokal); auf Render kommen die Variablen aus den Env-Settings
+from dotenv import load_dotenv  # .env laden (für Supabase etc.)
+load_dotenv()
 
 from datetime import date
-from flask import (
-    Flask,
-    render_template,
-    request,
-    redirect,
-    url_for,
-    abort,
-    jsonify,
-)
+from flask import Flask, render_template, request, redirect, url_for, abort, jsonify
 
 from sqlalchemy import text
 from app.config.database import SessionLocal
 
-# Loans importieren
+# loans importieren
 from app.services.loans import (
     list_loans,
     create_loan,
@@ -26,16 +17,15 @@ from app.services.loans import (
     get_planned_periods_for_box,
 )
 
-# Boxes importieren
+# boxes importieren
 from app.services.boxes import (
     get_box_id_by_code,
     create_box,
 )
 
-# Photos-Storage importieren (NEUE Variante, ohne temp/)
+# photos_storage importieren – neue Funktion für direkten Upload
 from app.services.photos_storage import (
-    upload_initial_photo,
-    replace_initial_photo,
+    upload_initial_photo_for_loan,
 )
 
 app = Flask(__name__)
@@ -50,7 +40,7 @@ def home():
     sort = request.args.get("sort", "").strip()
     contact = request.args.get("contact", "").strip()
 
-    # Alle Leihen laden
+    # Alle Leihen wie bisher laden
     loans = list_loans()
 
     # -------------------------------
@@ -82,7 +72,7 @@ def home():
     if sort == "issue_date_asc":
         loans = sorted(
             loans,
-            key=lambda l: get_issue_date(l) or date.max,
+            key=lambda l: get_issue_date(l) or date.max
         )
     elif sort == "issue_date_desc":
         loans = sorted(
@@ -93,7 +83,7 @@ def home():
     elif sort == "return_date_asc":
         loans = sorted(
             loans,
-            key=lambda l: get_return_date(l) or date.max,
+            key=lambda l: get_return_date(l) or date.max
         )
     elif sort == "return_date_desc":
         loans = sorted(
@@ -115,14 +105,14 @@ def home():
 
 
 # ---------------------------------------------------
-# Neue Leihe Formular
+# Neue Leihe Formular (Schritt 1 – ohne Foto!)
 # ---------------------------------------------------
 @app.route("/new-loan")
 def new_loan():
     return render_template(
         "new_loan.html",
         title="Neue Leihe",
-        current_date=date.today().isoformat(),
+        current_date=date.today().isoformat()
     )
 
 
@@ -144,189 +134,188 @@ def api_box_availability(box_code: str):
     periods = get_planned_periods_for_box(box_id)
 
     # JSON-Antwort erstellen
-    return jsonify(
-        {
-            "box_id": box_id,
-            "periods": [
-                {
-                    "start": p["start"].isoformat(),
-                    "end": p["end"].isoformat(),
-                }
-                for p in periods
-            ],
-        }
-    )
+    return jsonify({
+        "box_id": box_id,
+        "periods": [
+            {
+                "start": p["start"].isoformat(),
+                "end": p["end"].isoformat(),
+            }
+            for p in periods
+        ]
+    })
 
 
 # ---------------------------------------------------
-# Leihe anlegen (Schritt 1 – ohne Foto)
+# Hilfsfunktion: Leihe mit Validierung anlegen
 # ---------------------------------------------------
-@app.route("/save-loan", methods=["POST"])
-def save_loan():
+def _create_loan_with_validation(box_id: int, form_data: dict) -> int:
     """
-    Legt eine neue Leihe an, OHNE Foto.
-    Danach wird auf eine zweite Seite weitergeleitet,
-    auf der das Foto für diese Leihe hochgeladen wird.
+    Validiert Datumslogik + Überschneidungen und legt dann eine Leihe an.
+    Gibt die loan_id zurück.
     """
+    ausgabe_str = form_data.get("ausgabe")
+    rueckgabe_str = form_data.get("rueckgabe")
+    email = form_data.get("email")
 
-    box_code = request.form.get("box_code", "").strip()
-    email = request.form.get("email", "").strip()
-    ausgabe_str = request.form.get("ausgabe", "").strip()
-    rueckgabe_str = request.form.get("rueckgabe", "").strip()
-
-    if not box_code:
-        abort(400, "Box-Code fehlt.")
-    if not email:
-        abort(400, "E-Mail fehlt.")
-    if not ausgabe_str or not rueckgabe_str:
-        abort(400, "Ausgabe- und Rückgabedatum sind Pflichtfelder.")
+    if not ausgabe_str or not rueckgabe_str or not email:
+        abort(400, "Es fehlen Pflichtfelder (E-Mail oder Datum).")
 
     try:
-        planned_start = date.fromisoformat(ausgabe_str)
-        planned_end = date.fromisoformat(rueckgabe_str)
+        ausgabe = date.fromisoformat(ausgabe_str)
+        rueckgabe = date.fromisoformat(rueckgabe_str)
     except ValueError:
         abort(400, "Datumsformat muss YYYY-MM-DD sein.")
 
-    # Gültigkeit prüfen
-    if planned_start < date.today():
+    if ausgabe < date.today():
         abort(400, "Ausgabedatum kann nicht in der Vergangenheit liegen.")
-    if planned_end < planned_start:
+
+    if rueckgabe < ausgabe:
         abort(400, "Rückgabedatum darf nicht vor dem Ausgabedatum liegen.")
 
-    # Box-ID ermitteln oder neue Box anlegen
-    box_id = get_box_id_by_code(box_code)
-    if box_id is None:
-        # Aktuell: Box ohne weitere Bestätigung anlegen
-        box_id = create_box(box_code)
-
-    # Überlappung prüfen:
-    # Hier könnt ihr entscheiden, ob RETURNED blockieren soll oder nicht.
+    # Überlappung prüfen
     with SessionLocal() as session:
         overlap = session.execute(
-            text(
-                """
+            text("""
                 SELECT 1 FROM loans
                 WHERE box_id = :bid
-                  AND status IN ('OPEN', 'OVERDUE')
+                  AND status IN ('OPEN', 'OVERDUE', 'RETURNED')
                   AND (
                         :new_start <= planned_end_date
                     AND :new_end   >= planned_start_date
                   )
                 LIMIT 1
-            """
-            ),
+            """),
             {
                 "bid": box_id,
-                "new_start": planned_start,
-                "new_end": planned_end,
-            },
+                "new_start": ausgabe,
+                "new_end": rueckgabe
+            }
         ).first()
 
         if overlap:
             abort(400, "Diese Box ist im angegebenen Zeitraum bereits ausgeliehen!")
 
-    # Leihe speichern
+    # TODO: created_by_user_id später aus Login nehmen
     loan_id = create_loan(
         box_id=box_id,
         contact_email=email,
-        planned_start_date=planned_start,
-        planned_end_date=planned_end,
-        created_by_user_id=2,  # später aus Login
+        planned_start_date=ausgabe,
+        planned_end_date=rueckgabe,
+        created_by_user_id=2,
     )
-
-    # ➜ Weiter zur Foto-Seite
-    return redirect(url_for("upload_loan_photo", loan_id=loan_id))
+    return loan_id
 
 
 # ---------------------------------------------------
-# Foto-Seite (Schritt 2 – Formular zum Foto-Upload)
+# Schritt 1 POST: Leihdaten verarbeiten, Box prüfen
 # ---------------------------------------------------
-@app.route("/loan/<int:loan_id>/photo", methods=["GET"])
-def upload_loan_photo(loan_id: int):
-    """
-    Zeigt das Formular zum Hochladen oder Ersetzen des INITIAL-Fotos
-    für eine existierende Leihe.
-    """
+@app.route("/start-loan", methods=["POST"])
+def start_loan():
+    box_code = request.form.get("box_code", "").strip()
+    if not box_code:
+        abort(400, "Box-Code fehlt.")
+
+    form_data = {
+        "box_code": box_code,
+        "email": request.form.get("email", "").strip(),
+        "ausgabe": request.form.get("ausgabe", "").strip(),
+        "rueckgabe": request.form.get("rueckgabe", "").strip(),
+    }
+
+    # Box existiert?
+    existing_box_id = get_box_id_by_code(box_code)
+
+    if existing_box_id is None:
+        # Box NICHT vorhanden → Bestätigungsseite
+        return render_template(
+            "confirm_new_box.html",
+            title="Neue Box anlegen?",
+            box_code=box_code,
+            form_data=form_data,
+        )
+
+    # Box existiert → Leihe anlegen & zur Foto-Seite gehen
+    loan_id = _create_loan_with_validation(existing_box_id, form_data)
+    return redirect(url_for("upload_photo", loan_id=loan_id))
+
+
+# ---------------------------------------------------
+# Nutzer klickt auf JA oder NEIN beim Box-Anlegen
+# ---------------------------------------------------
+@app.route("/confirm-new-box", methods=["POST"])
+def confirm_new_box():
+    decision = request.form.get("decision")
+    box_code = request.form.get("box_code", "").strip()
+
+    form_data = {
+        "box_code": box_code,
+        "email": request.form.get("email", "").strip(),
+        "ausgabe": request.form.get("ausgabe", "").strip(),
+        "rueckgabe": request.form.get("rueckgabe", "").strip(),
+    }
+
+    if decision == "no":
+        # Zurück zum Formular – optional: Werte wieder vorbelegen
+        return render_template(
+            "new_loan.html",
+            title="Neue Leihe",
+            current_date=date.today().isoformat(),
+            **form_data,
+        )
+
+    if decision == "yes":
+        # Neue Box anlegen, dann Leihe anlegen
+        new_box_id = create_box(box_code)
+        loan_id = _create_loan_with_validation(new_box_id, form_data)
+        return redirect(url_for("upload_photo", loan_id=loan_id))
+
+    abort(400, "Ungültige Auswahl.")
+
+
+# ---------------------------------------------------
+# Schritt 2: Foto-Seite (GET + POST)
+# ---------------------------------------------------
+@app.route("/loan/<int:loan_id>/photo", methods=["GET", "POST"])
+def upload_photo(loan_id: int):
+    # Leihe holen, damit wir z. B. Box-Code anzeigen können
     loan = get_loan_by_id(loan_id)
     if loan is None:
         abort(404, "Leihe nicht gefunden.")
 
-    return render_template("upload_photo.html", title="Foto hochladen", loan=loan)
+    if request.method == "POST":
+        photo = request.files.get("photo")
+        if not photo:
+            abort(400, "Foto fehlt.")
 
+        # 1) Foto nach Supabase hochladen (direkt unter loans/<id>/...)
+        bucket_key = upload_initial_photo_for_loan(loan_id, photo)
 
-# ---------------------------------------------------
-# Foto speichern / ersetzen (Schritt 2 – POST)
-# ---------------------------------------------------
-@app.route("/loan/<int:loan_id>/photo", methods=["POST"])
-def save_loan_photo(loan_id: int):
-    """
-    Nimmt das Foto entgegen und:
-
-      - wenn es schon ein INITIAL-Foto gibt → ersetzt es
-      - sonst → legt einen neuen Foto-Eintrag an
-
-    In beiden Fällen wird das Bild direkt in den Supabase-Bucket
-    unter loans/<loan_id>/... hochgeladen.
-    """
-    loan = get_loan_by_id(loan_id)
-    if loan is None:
-        abort(404, "Leihe nicht gefunden.")
-
-    photo = request.files.get("photo")
-    if not photo:
-        abort(400, "Foto fehlt.")
-
-    with SessionLocal() as session:
-        existing = session.execute(
-            text(
-                """
-                SELECT id, file_path
-                FROM photos
-                WHERE loan_id = :lid AND type = 'INITIAL'
-                LIMIT 1
-            """
-            ),
-            {"lid": loan_id},
-        ).mappings().first()
-
-        if existing:
-            # Es gibt schon ein Foto → ersetzen
-            new_key = replace_initial_photo(
-                file_storage=photo,
-                loan_id=loan_id,
-                old_key=existing["file_path"],
-            )
-
+        # 2) Foto-Eintrag in der DB (photos-Tabelle)
+        with SessionLocal() as session:
             session.execute(
-                text(
-                    """
-                    UPDATE photos
-                    SET file_path = :p
-                    WHERE id = :pid
-                """
-                ),
-                {"p": new_key, "pid": existing["id"]},
-            )
-        else:
-            # Noch kein Foto → neu anlegen
-            new_key = upload_initial_photo(
-                file_storage=photo,
-                loan_id=loan_id,
-            )
-
-            session.execute(
-                text(
-                    """
+                text("""
                     INSERT INTO photos (loan_id, type, file_path, created_by_user_id)
-                    VALUES (:lid, 'INITIAL', :p, 2)
-                """
-                ),
-                {"lid": loan_id, "p": new_key},
+                    VALUES (:loan_id, 'INITIAL', :file_path, :user_id)
+                """),
+                {
+                    "loan_id": loan_id,
+                    "file_path": bucket_key,
+                    "user_id": 2,  # TODO: aus Login übernehmen
+                }
             )
+            session.commit()
 
-        session.commit()
+        # TODO: hier später KI mit demselben Bild-Upload antriggern
 
-    return redirect(url_for("home"))
+        return redirect(url_for("home"))
+
+    # GET → Template anzeigen
+    return render_template(
+        "upload_photo.html",
+        title="Foto aufnehmen",
+        loan=loan,
+    )
 
 
 # ---------------------------------------------------
@@ -343,7 +332,7 @@ def return_box(loan_id: int):
         return_loan(
             loan_id=loan_id,
             actual_end_date=date.today(),
-            closed_by_user_id=2,  # später aus Login
+            closed_by_user_id=2
         )
         return redirect(url_for("home"))
 
@@ -354,15 +343,12 @@ def return_box(loan_id: int):
 # Leihe verlängern
 # ---------------------------------------------------
 @app.route("/extend-loan/<int:loan_id>", methods=["POST"])
-def extend_loan_route(loan_id: int):
+def extend_loan_route(loan_id):
     new_date_str = request.form.get("new_date")
     if not new_date_str:
         abort(400, "Neues Enddatum fehlt.")
 
-    try:
-        new_date = date.fromisoformat(new_date_str)
-    except ValueError:
-        abort(400, "Datumsformat muss YYYY-MM-DD sein.")
+    new_date = date.fromisoformat(new_date_str)
 
     extend_loan(loan_id=loan_id, new_end_date=new_date)
 

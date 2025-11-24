@@ -1,15 +1,11 @@
 # app/services/photos_storage.py
 
 import os
-import tempfile
 from datetime import datetime
 from typing import Optional
 
 from supabase import create_client, Client
 
-# -------------------------------
-# Supabase-Konfiguration
-# -------------------------------
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "photos")
@@ -24,91 +20,38 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 
 def _sanitize_filename(name: str) -> str:
-    """Erlaubt nur einfache Zeichen im Dateinamen."""
-    if not name:
-        return "upload.jpg"
-    return "".join(c for c in name if c.isalnum() or c in ("-", "_", "."))
+    """Entfernt problematische Zeichen aus Dateinamen."""
+    return "".join(c for c in name if c.isalnum() or c in ("-", "_", ".", " ")).strip() or "upload.jpg"
 
 
-def _upload_file_storage_to_key(file_storage, key: str) -> str:
+def upload_initial_photo_for_loan(loan_id: int, file_storage) -> str:
     """
-    Nimmt ein Flask-FileStorage-Objekt entgegen und lädt es
-    unter dem gegebenen Bucket-Key hoch.
-
-    Wir nutzen kurz eine echte Temp-Datei auf dem System (z.B. /tmp),
-    weil die Supabase-Python-Library einen Dateipfad erwartet.
-    """
-    # 1) sichere Temp-Datei anlegen
-    with tempfile.NamedTemporaryFile(delete=False) as tmp:
-        tmp_path = tmp.name
-        # Inhalt des Uploads auf Platte schreiben
-        file_storage.save(tmp_path)
-
-    try:
-        # 2) Datei zu Supabase hochladen
-        supabase.storage.from_(SUPABASE_BUCKET).upload(
-            key,
-            tmp_path,
-            {"upsert": True},   # falls ihr später ersetzen wollt
-        )
-    finally:
-        # 3) lokale Temp-Datei löschen
-        try:
-            os.remove(tmp_path)
-        except FileNotFoundError:
-            pass
-
-    return key
-
-
-# -------------------------------------------------
-# 1) INITIAL-Foto direkt an eine Leihe hängen
-# -------------------------------------------------
-def upload_initial_photo(file_storage, loan_id: int) -> str:
-    """
-    Lädt das erste Foto einer Leihe direkt in den Bucket
-    unter: loans/<loan_id>/initial_<timestamp>_<filename>
+    Lädt ein INITIAL-Foto direkt in den Supabase-Bucket hoch,
+    unter einem Pfad wie: loans/<loan_id>/initial_<timestamp>_<filename>.
 
     Rückgabe:
-      - der Bucket-Pfad (key), z.B.
-        "loans/42/initial_20251123_190102_BOX-001_front.jpg"
+      - bucket_key (Pfad im Bucket), z.B. "loans/42/initial_20251124_101500_boxfoto.jpg"
     """
-    original_name = _sanitize_filename(getattr(file_storage, "filename", "upload.jpg"))
+
+    # Original-Dateiname & Content-Type vom Upload
+    original_name = file_storage.filename or "upload.jpg"
+    safe_name = _sanitize_filename(original_name)
+
     ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    bucket_key = f"loans/{loan_id}/initial_{ts}_{safe_name}"
 
-    key = f"loans/{loan_id}/initial_{ts}_{original_name}"
+    # Datei als Bytes einlesen
+    file_bytes = file_storage.read()
+    content_type = file_storage.mimetype or "image/jpeg"
 
-    return _upload_file_storage_to_key(file_storage, key)
+    # Upload zu Supabase
+    supabase.storage.from_(SUPABASE_BUCKET).upload(
+        bucket_key,
+        file_bytes,
+        {"content-type": content_type}
+    )
 
+    # Hinweis: file_storage-Stream ist nun "verbraucht",
+    # aber wir brauchen ihn nach dem Upload auch nicht mehr.
 
-# -------------------------------------------------
-# 2) INITIAL-Foto ersetzen
-# -------------------------------------------------
-def replace_initial_photo(
-    file_storage,
-    loan_id: int,
-    old_key: Optional[str] = None,
-) -> str:
-    """
-    Ersetzt das INITIAL-Foto einer Leihe:
-
-      - optional: altes Bild im Bucket löschen (old_key)
-      - neues Bild direkt hochladen
-      - gibt den neuen Bucket-Pfad zurück
-
-    Achtung:
-      - Die Aktualisierung des Eintrags in der Tabelle 'photos'
-        macht ihr im Web/Service-Code, nicht hier.
-    """
-
-    # Altes Foto im Bucket entfernen (falls angegeben)
-    if old_key:
-        try:
-            supabase.storage.from_(SUPABASE_BUCKET).remove([old_key])
-        except Exception:
-            # Für euer Projekt reicht es, Fehler hier zu ignorieren.
-            # Optional: logging einbauen.
-            pass
-
-    # Neues Bild hochladen
-    return upload_initial_photo(file_storage, loan_id)
+    return bucket_key

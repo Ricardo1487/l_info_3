@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="page-header">
+    <h1 class="page-title">Foto für Leihe #{{ loan.id }}</h1>
+    <p>Box: <strong>{{ loan.box_code }}</strong> &middot; Kontakt: {{ loan.contact_email }}</p>
+</section>
+
+<section class="card">
+    <form method="post" enctype="multipart/form-data" class="form">
+        <div class="form-group">
+            <label for="photo">Foto der Box</label>
+            <input
+                id="photo"
+                type="file"
+                name="photo"
+                accept="image/*"
+                capture="environment"
+                required
+            >
+            <small>Nutze die Kamera deines Geräts, um ein aktuelles Foto aufzunehmen.</small>
+        </div>
+
+        <div id="preview-container" style="display:none; margin-top:1rem;">
+            <p>Vorschau:</p>
+            <img id="preview-img"
+                 alt="Foto-Vorschau"
+                 style="max-width:100%; border-radius:8px; display:block;">
+            <button type="button"
+                    id="retake-btn"
+                    class="btn-secondary full-width"
+                    style="margin-top:0.5rem;">
+                Foto neu auswählen
+            </button>
+        </div>
+
+        <button class="btn-primary full-width" style="margin-top:1rem;">
+            Foto speichern &amp; Leihe abschließen
+        </button>
+    </form>
+</section>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const input = document.getElementById("photo");
+    const previewContainer = document.getElementById("preview-container");
+    const previewImg = document.getElementById("preview-img");
+    const retakeBtn = document.getElementById("retake-btn");
+
+    input.addEventListener("change", () => {
+        const file = input.files[0];
+        if (!file) {
+            previewContainer.style.display = "none";
+            previewImg.src = "";
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            previewImg.src = e.target.result;
+            previewContainer.style.display = "block";
+        };
+        reader.readAsDataURL(file);
+    });
+
+    retakeBtn.addEventListener("click", () => {
+        input.value = "";
+        previewImg.src = "";
+        previewContainer.style.display = "none";
+        input.click(); // direkt wieder Datei-Dialog/Kamera öffnen
+    });
+});
+</script>
+
+{% endblock %}
