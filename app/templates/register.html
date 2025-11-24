@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="page-header">
+    <h1 class="page-title">Registrierung</h1>
+    <p class="page-subtitle">Erstelle ein neues Benutzerkonto.</p>
+</section>
+
+{% if message %}
+<div class="alert alert-error">
+    {{ message }}
+</div>
+{% endif %}
+
+<section class="card">
+
+    <form method="POST" class="form">
+
+        <!-- Name -->
+        <div class="form-group">
+            <label for="name">Name</label>
+            <input id="name" name="name" type="text" required>
+        </div>
+
+        <!-- E-Mail -->
+        <div class="form-group">
+            <label for="email">E-Mail</label>
+            <input id="email" name="email" type="email" required>
+        </div>
+
+        <!-- Passwort -->
+        <div class="form-group">
+            <label for="password">Passwort</label>
+            <input id="password" name="password" type="password" required>
+        </div>
+
+        <!-- Passwort bestätigen -->
+        <div class="form-group">
+            <label for="password_confirm">Passwort bestätigen</label>
+            <input id="password_confirm" name="password_confirm" type="password" required>
+        </div>
+
+        <button class="btn-primary full-width" style="margin-top: 0.8rem;">
+            Registrieren
+        </button>
+
+    </form>
+
+    <p style="margin-top: 1rem; font-size: 0.8rem; text-align: center;">
+        Bereits registriert?
+        <a href="{{ url_for('login_page') }}" style="color: var(--primary); text-decoration: none;">
+            Zum Login →
+        </a>
+    </p>
+
+</section>
+
+{% endblock %}
