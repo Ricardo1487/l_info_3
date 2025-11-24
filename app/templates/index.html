@@ -40,6 +40,59 @@
         </article>
     </section>
 
+    {# === Filterleiste unter den Stat-Karten === #}
+    <form class="filter-card" method="get">
+        <div class="filter-row">
+            {# Sortierung nach Datum #}
+            <div class="filter-group">
+                <label for="sort" class="filter-label">Sortieren nach</label>
+                <select id="sort" name="sort" class="filter-select">
+                    <option value="">Keine Sortierung</option>
+                    <option value="issue_date_asc"
+                        {{ 'selected' if current_sort == 'issue_date_asc' else '' }}>
+                        Ausgabedatum ↑
+                    </option>
+                    <option value="issue_date_desc"
+                        {{ 'selected' if current_sort == 'issue_date_desc' else '' }}>
+                        Ausgabedatum ↓
+                    </option>
+                    <option value="return_date_asc"
+                        {{ 'selected' if current_sort == 'return_date_asc' else '' }}>
+                        Rückgabedatum ↑
+                    </option>
+                    <option value="return_date_desc"
+                        {{ 'selected' if current_sort == 'return_date_desc' else '' }}>
+                        Rückgabedatum ↓
+                    </option>
+                </select>
+            </div>
+
+            {# Suche nach Kontakt-E-Mail #}
+            <div class="filter-group filter-group-grow">
+                <label for="contact" class="filter-label">Kontakt (E-Mail)</label>
+                <input
+                    type="search"
+                    id="contact"
+                    name="contact"
+                    class="filter-input"
+                    placeholder="E-Mail der leihenden Person"
+                    value="{{ current_contact or '' }}"
+                >
+            </div>
+
+            {# Buttons #}
+            <div class="filter-actions">
+                <button type="submit" class="filter-button-primary">
+                    Anwenden
+                </button>
+                <a href="{{ url_for('home') }}" class="filter-button-reset">
+                    Zurücksetzen
+                </a>
+            </div>
+        </div>
+    </form>
+    {# === Ende Filterleiste === #}
+
     {# Karten-Liste mit allen Leihen #}
     <section class="card-list">
       {% for loan in loans %}
@@ -91,4 +144,3 @@
   {% endif %}
 
 {% endblock %}
-
