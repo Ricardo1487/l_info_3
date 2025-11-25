@@ -27,6 +27,8 @@ from app.services.photos_storage import (
     delete_temp_photo,
 )
 
+from app.services.image_compare import analyze_image_file
+
 
 app = Flask(__name__)
 
@@ -97,6 +99,10 @@ def save_loan():
     if not photo:
         abort(400, "Foto muss hochgeladen werden!")
 
+    # Bild mit KI analysieren (Beschreibung erzeugen)
+    analysis = analyze_image_file(photo)
+    photo_description = analysis.get("beschreibung") if isinstance(analysis, dict) else str(analysis)
+
     # 🔹 Foto direkt nach Supabase in temp/ hochladen
     temp_path = upload_temp_photo(photo, box_code)
 
@@ -111,10 +117,11 @@ def save_loan():
             box_code=box_code,
             temp_path=temp_path,     # statt tmp_filename
             form_data=request.form,
+            photo_description=photo_description,
         )
 
     # Box existiert → direkt Leihe erstellen
-    return process_loan_creation(existing_box_id, request.form, temp_path)
+    return process_loan_creation(existing_box_id, request.form, temp_path, photo_description)
 
 
 
@@ -134,6 +141,8 @@ def confirm_new_box():
         "rueckgabe": request.form.get("rueckgabe"),
     }
 
+    photo_description = request.form.get("photo_description")
+
     if decision == "no":
         # Temp-Foto im Bucket löschen
         if temp_path:
@@ -142,7 +151,7 @@ def confirm_new_box():
 
     if decision == "yes":
         new_box_id = create_box(box_code)
-        return process_loan_creation(new_box_id, form_data, temp_path)
+        return process_loan_creation(new_box_id, form_data, temp_path, photo_description)
 
     abort(400, "Ungültige Auswahl.")
 
@@ -151,7 +160,7 @@ def confirm_new_box():
 # ---------------------------------------------------
 # ZENTRALE LEIHE-ERSTELLUNG (mit Zeitüberschneidung!)
 # ---------------------------------------------------
-def process_loan_creation(box_id, form_data, temp_path):
+def process_loan_creation(box_id, form_data, temp_path, photo_description):
 
     ausgabe = date.fromisoformat(form_data["ausgabe"])
     rueckgabe = date.fromisoformat(form_data["rueckgabe"])
@@ -208,12 +217,13 @@ def process_loan_creation(box_id, form_data, temp_path):
     with SessionLocal() as session:
         session.execute(
             text("""
-                INSERT INTO photos (loan_id, type, file_path, created_by_user_id)
-                VALUES (:loan_id, 'INITIAL', :file_path, :user_id)
+                INSERT INTO photos (loan_id, type, file_path, description, created_by_user_id)
+                VALUES (:loan_id, 'INITIAL', :file_path, :description, :user_id)
             """),
             {
                 "loan_id": loan_id,
                 "file_path": final_path,
+                "description": photo_description,
                 "user_id": 2,
             }
         )

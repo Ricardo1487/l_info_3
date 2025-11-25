@@ -55,3 +55,68 @@ def upload_initial_photo_for_loan(loan_id: int, file_storage) -> str:
     # aber wir brauchen ihn nach dem Upload auch nicht mehr.
 
     return bucket_key
+
+
+def upload_temp_photo(file_storage, box_code: str) -> str:
+    """Lädt ein temporäres Foto für eine Box in den Supabase-Bucket hoch.
+
+    Pfad-Schema im Bucket:
+        temp/<box_code>/<timestamp>_<filename>
+
+    Rückgabe:
+        bucket_key (Pfad im Bucket), z.B.
+        "temp/BOX123/20251124_101500_boxfoto.jpg"
+    """
+
+    original_name = file_storage.filename or "upload.jpg"
+    safe_name = _sanitize_filename(original_name)
+
+    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    bucket_key = f"temp/{box_code}/{ts}_{safe_name}"
+
+    file_bytes = file_storage.read()
+    content_type = file_storage.mimetype or "image/jpeg"
+
+    supabase.storage.from_(SUPABASE_BUCKET).upload(
+        bucket_key,
+        file_bytes,
+        {"content-type": content_type},
+    )
+
+    return bucket_key
+
+
+def promote_temp_to_initial(temp_path: str, loan_id: int) -> str:
+    """Verschiebt ein temporäres Foto in den endgültigen Loan-Pfad.
+
+    Erwartet einen temp-Pfad wie:
+        temp/<box_code>/<timestamp>_<filename>
+
+    Zielpfad:
+        loans/<loan_id>/initial_<timestamp>_<filename>
+
+    Rückgabe:
+        final_bucket_key (neuer Pfad im Bucket)
+    """
+
+    # Dateiname aus dem temp_path extrahieren
+    filename = temp_path.split("/")[-1]
+    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    final_key = f"loans/{loan_id}/initial_{ts}_{filename}"
+
+    # Versuchen, die Datei innerhalb des Buckets zu verschieben (move).
+    # Falls move im verwendeten supabase-Client nicht verfügbar ist,
+    # müsste man hier copy + remove implementieren.
+    supabase.storage.from_(SUPABASE_BUCKET).move(temp_path, final_key)
+
+    return final_key
+
+
+def delete_temp_photo(temp_path: str) -> None:
+    """Löscht ein temporäres Foto aus dem Bucket.
+
+    Erwartet einen temp-Pfad wie:
+        temp/<box_code>/<timestamp>_<filename>
+    """
+
+    supabase.storage.from_(SUPABASE_BUCKET).remove([temp_path])
