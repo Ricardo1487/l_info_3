@@ -329,5 +329,30 @@ def extend_loan_route(loan_id):
 
 
 
+
+# ---------------------------------------------------
+# Inhalt einer Leihe prüfen (INITIAL vs RETURN)
+# ---------------------------------------------------
+@app.route("/loan/<int:loan_id>/check-contents")
+def check_loan_contents(loan_id: int):
+    loan = get_loan_by_id(loan_id)
+    if loan is None:
+        abort(404, "Leihe nicht gefunden.")
+
+    # INITIAL-Objekte laden
+    with SessionLocal() as session:
+        initial_objects = get_detected_objects_for_photo(session, loan_id, "INITIAL")
+        returned_objects = get_detected_objects_for_photo(session, loan_id, "RETURN")
+        missing_objects = compare_object_sets(initial_objects, returned_objects)
+
+    return render_template(
+        "check_contents.html",
+        title="Inhalt prüfen",
+        loan=loan,
+        initial_objects=initial_objects,
+        returned_objects=returned_objects,
+        missing_objects=missing_objects,
+    )
+
 if __name__ == "__main__":
     app.run(debug=True)
