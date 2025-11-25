@@ -13,7 +13,8 @@ from app.services.loans import (
     return_loan,
     extend_loan,
     get_planned_periods_for_box,
-
+    get_detected_objects_for_photo,
+    compare_object_sets,
 )
 #boxes importieren
 from app.services.boxes import (
@@ -243,11 +244,68 @@ def return_box(loan_id: int):
         abort(404, "Leihe nicht gefunden.")
 
     if request.method == "POST":
+        # 1️⃣ Foto aus dem Formular holen
+        return_photo = request.files.get("return_photo")
+        if not return_photo:
+            abort(400, "Rückgabe-Foto fehlt.")
+
+        # 2️⃣ Rückgabe-Foto in Supabase speichern
+        from app.services.photos_storage import upload_return_photo_for_loan
+        return_path = upload_return_photo_for_loan(return_photo, loan_id)
+
+        # 3️⃣ Rückgabe-Foto automatisch analysieren
+        analysis = analyze_image_file(return_photo)
+        detected_objects = analysis.get("objects", [])
+
+        # 4️⃣ Foto + erkannte Objekte in DB speichern
+        with SessionLocal() as session:
+            # Foto-Row (type RETURN)
+            result = session.execute(
+                text("""
+                    INSERT INTO photos (loan_id, type, file_path, created_by_user_id)
+                    VALUES (:loan_id, 'RETURN', :file_path, :user_id)
+                    RETURNING id
+                """),
+                {
+                    "loan_id": loan_id,
+                    "file_path": return_path,
+                    "user_id": 2,
+                }
+            )
+            photo_id = result.scalar_one()
+
+            # erkannte Objekte speichern
+            for obj in detected_objects:
+                session.execute(
+                    text("""
+                        INSERT INTO detected_objects (photo_id, label, confidence, quantity, is_manually_edited)
+                        VALUES (:photo_id, :label, :confidence, :quantity, false)
+                    """),
+                    {
+                        "photo_id": photo_id,
+                        "label": obj.get("label"),
+                        "confidence": obj.get("confidence"),
+                        "quantity": obj.get("quantity", 1),
+                    }
+                )
+
+            session.commit()
+
+        # 5️⃣ Initial- und Rückgabeobjekte vergleichen (nur Berechnung, keine bestehende Logik ändern)
+        with SessionLocal() as session:
+            initial_objects = get_detected_objects_for_photo(session, loan_id, "INITIAL")
+            returned_objects = get_detected_objects_for_photo(session, loan_id, "RETURN")
+            missing_objects = compare_object_sets(initial_objects, returned_objects)
+            # Aktuell nur im Log ausgeben – Anzeige/weitere Verarbeitung kann später ergänzt werden
+            print("Fehlende Gegenstände für Leihe", loan_id, ":", missing_objects)
+
+        # 6️⃣ Leihe abschließen
         return_loan(
             loan_id=loan_id,
             actual_end_date=date.today(),
             closed_by_user_id=2
         )
+
         return redirect(url_for("home"))
 
     return render_template("return.html", title="Rückgabe", loan=loan)
