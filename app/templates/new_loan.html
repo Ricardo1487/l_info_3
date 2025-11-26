@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% if error %}
+<div class="error-box">
+    {{ error }}
+</div>
+{% endif %}
+
+<style>
+.error-box {
+  background: rgba(255, 70, 70, 0.2);
+  border: 1px solid rgba(255, 80, 80, 0.4);
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  color: #ffcccc;
+  font-weight: 600;
+}
+</style>
+
+<section class="page-header">
+    <h1 class="page-title">Neue Leihe</h1>
+</section>
+
+<section class="card">
+
+<form id="new-loan-form" action="{{ url_for('start_loan') }}" method="post" class="form">
+
+    <!-- Box-Code -->
+    <div class="form-group">
+        <label for="box_code">Box-Code</label>
+        <input id="box_code"
+               name="box_code"
+               type="text"
+               placeholder="BOX-001"
+               value="{{ box_code or '' }}"
+               required>
+    </div>
+
+    <!-- Kontakt -->
+    <div class="form-group">
+        <label for="email">E-Mail</label>
+        <input id="email"
+               name="email"
+               type="email"
+               value="{{ email or '' }}"
+               required>
+    </div>
+
+    <!-- Verfügbarkeitskalender -->
+    <div class="form-group">
+        <label>Verfügbarkeit dieser Box</label>
+        <div id="availability-calendar" class="availability-calendar">
+            <p class="cal-placeholder">Bitte Box-Code eingeben.</p>
+        </div>
+    </div>
+
+    <!-- Datumsfelder -->
+    <div class="form-group-inline">
+        <div class="form-group">
+            <label for="ausgabe">Ausgabe</label>
+            <input id="ausgabe"
+                   name="ausgabe"
+                   type="date"
+                   value="{{ ausgabe or current_date }}"
+                   required>
+        </div>
+
+        <div class="form-group">
+            <label for="rueckgabe">Rückgabe</label>
+            <input id="rueckgabe"
+                   name="rueckgabe"
+                   type="date"
+                   value="{{ rueckgabe or '' }}"
+                   required>
+        </div>
+    </div>
+
+    <button class="btn-primary full-width">Weiter zum Foto</button>
+
+</form>
+
+</section>
+
+<!-- ============================
+       KALENDER STYLING
+============================= -->
+<style>
+/* komplette Kalender-CSS unverändert */
+.availability-calendar {
+  background: rgba(15,23,42,0.45);
+  padding: 1rem;
+  border-radius: 10px;
+  color: #e2e8f0;
+}
+.cal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: .8rem;
+}
+.cal-title {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+.cal-nav {
+  background: rgba(255,255,255,0.1);
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: white;
+  font-size: 0.9rem;
+}
+.cal-nav:hover { background: rgba(255,255,255,0.2); }
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7,1fr);
+  gap: 6px;
+}
+.cal-day-header {
+  text-align: center;
+  opacity: .6;
+  font-size: 0.8rem;
+}
+.cal-day {
+  padding: 8px 0;
+  text-align: center;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: .9rem;
+}
+.cal-day.free { background: rgba(34,197,94,0.25); }
+.cal-day.busy { background: rgba(248,113,113,0.3); cursor: not-allowed; }
+.cal-day.past { background: rgba(120,120,120,0.25); cursor: not-allowed; opacity: .5; }
+.cal-day.selected {
+  background: rgba(59,130,246,0.8) !important;
+  color: white;
+  font-weight: 600;
+}
+.cal-day.free:hover {
+  background: rgba(96,165,250,0.6);
+}
+</style>
+
+<!-- ============================
+       KALENDER LOGIK (JS)
+============================= -->
+<script>
+/* komplette JS unverändert */
+document.addEventListener("DOMContentLoaded", () => {
+    const boxInput  = document.getElementById("box_code");
+    const ausgabe   = document.getElementById("ausgabe");
+    const rueckgabe = document.getElementById("rueckgabe");
+    const calendar  = document.getElementById("availability-calendar");
+
+    let periods = [];
+    let selectedStart = null;
+    let selectedEnd   = null;
+
+    function pad(n) { return n < 10 ? "0" + n : "" + n; }
+    function formatYMD(y, m, d) { return y + "-" + pad(m) + "-" + pad(d); }
+
+    function todayIso() {
+        const now = new Date();
+        return formatYMD(now.getFullYear(), now.getMonth() + 1, now.getDate());
+    }
+
+    const todayStr = todayIso();
+    if (!ausgabe.value) {
+        ausgabe.value = todayStr;
+    }
+    ausgabe.min   = todayStr;
+    if (!rueckgabe.value) {
+        rueckgabe.min = todayStr;
+    }
+
+    function isPast(iso) { return iso < todayStr; }
+    function isBusy(iso) { return periods.some(p => iso >= p.start && iso <= p.end); }
+    function isInSelection(iso) {
+        if (selectedStart && !selectedEnd) return iso === selectedStart;
+        if (selectedStart && selectedEnd)  return iso >= selectedStart && iso <= selectedEnd;
+        return false;
+    }
+
+    function handleDayClick(iso) {
+        if (isPast(iso) || isBusy(iso)) return;
+
+        if (!selectedStart) {
+            selectedStart = iso;
+            selectedEnd = null;
+            ausgabe.value = selectedStart;
+            rueckgabe.value = "";
+            rueckgabe.min = selectedStart;
+            renderCalendar(currentYear, currentMonth);
+            return;
+        }
+
+        if (!selectedEnd) {
+            if (iso < selectedStart) {
+                selectedEnd   = selectedStart;
+                selectedStart = iso;
+            } else {
+                selectedEnd = iso;
+            }
+            ausgabe.value   = selectedStart;
+            rueckgabe.value = selectedEnd;
+            rueckgabe.min   = selectedStart;
+            renderCalendar(currentYear, currentMonth);
+            return;
+        }
+
+        selectedStart = iso;
+        selectedEnd   = null;
+        ausgabe.value = selectedStart;
+        rueckgabe.value = "";
+        rueckgabe.min = selectedStart;
+        renderCalendar(currentYear, currentMonth);
+    }
+
+    ausgabe.addEventListener("change", () => {
+        if (!ausgabe.value) return;
+        if (ausgabe.value < todayStr) ausgabe.value = todayStr;
+        rueckgabe.min = ausgabe.value;
+        if (rueckgabe.value && rueckgabe.value < ausgabe.value) {
+            rueckgabe.value = ausgabe.value;
+        }
+        selectedStart = ausgabe.value;
+        selectedEnd   = rueckgabe.value || null;
+        renderCalendar(currentYear, currentMonth);
+    });
+
+    rueckgabe.addEventListener("change", () => {
+        if (!rueckgabe.value) return;
+        if (rueckgabe.value < ausgabe.value) {
+            rueckgabe.value = ausgabe.value;
+        }
+        selectedStart = ausgabe.value;
+        selectedEnd   = rueckgabe.value;
+        renderCalendar(currentYear, currentMonth);
+    });
+
+    boxInput.addEventListener("change", fetchAvailability);
+    boxInput.addEventListener("blur", fetchAvailability);
+
+    async function fetchAvailability() {
+        const code = boxInput.value.trim();
+        if (!code) {
+            calendar.innerHTML = "<p class='cal-placeholder'>Bitte Box-Code eingeben.</p>";
+            return;
+        }
+
+        const res = await fetch(`/api/box/${encodeURIComponent(code)}/availability`);
+        const data = await res.json();
+        periods = data.periods || [];
+
+        currentYear  = new Date().getFullYear();
+        currentMonth = new Date().getMonth();
+
+        selectedStart = ausgabe.value || null;
+        selectedEnd   = rueckgabe.value || null;
+
+        renderCalendar(currentYear, currentMonth);
+    }
+
+    const MONTH_NAMES = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+
+    let currentYear  = new Date().getFullYear();
+    let currentMonth = new Date().getMonth();
+
+    function prevMonth() {
+        currentMonth--;
+        if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+        renderCalendar(currentYear, currentMonth);
+    }
+
+    function nextMonth() {
+        currentMonth++;
+        if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+        renderCalendar(currentYear, currentMonth);
+    }
+
+    function renderCalendar(year, monthIndex) {
+        const first = new Date(year, monthIndex, 1);
+        const last  = new Date(year, monthIndex + 1, 0);
+        const daysInMonth = last.getDate();
+
+        let html = `
+            <div class="cal-header">
+                <button class="cal-nav" id="prev-month">&lt;</button>
+                <span class="cal-title">${MONTH_NAMES[monthIndex]} ${year}</span>
+                <button class="cal-nav" id="next-month">&gt;</button>
+            </div>
+
+            <div class="cal-grid">
+                <div class="cal-day-header">Mo</div>
+                <div class="cal-day-header">Di</div>
+                <div class="cal-day-header">Mi</div>
+                <div class="cal-day-header">Do</div>
+                <div class="cal-day-header">Fr</div>
+                <div class="cal-day-header">Sa</div>
+                <div class="cal-day-header">So</div>
+        `;
+
+        const offset = (first.getDay() + 6) % 7;
+        for (let i = 0; i < offset; i++) html += "<div></div>";
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            const iso = formatYMD(year, monthIndex + 1, d);
+
+            let cls = "cal-day ";
+            if (isPast(iso)) cls += "past";
+            else if (isBusy(iso)) cls += "busy";
+            else cls += "free";
+
+            if (isInSelection(iso)) cls += " selected";
+
+            html += `<div class="${cls}" data-date="${iso}">${d}</div>`;
+        }
+
+        html += "</div>";
+        calendar.innerHTML = html;
+
+        document.getElementById("prev-month").onclick = prevMonth;
+        document.getElementById("next-month").onclick = nextMonth;
+
+        document.querySelectorAll(".cal-day.free").forEach(el => {
+            el.onclick = () => handleDayClick(el.dataset.date);
+        });
+    }
+
+    renderCalendar(currentYear, currentMonth);
+});
+</script>
+
+{% endblock %}

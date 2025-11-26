@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+  <section class="page-header">
+      <h1 class="page-title">Rückgabe</h1>
+      <p class="page-subtitle">
+          Box {{ loan.box_code }} wieder ins Lager aufnehmen.
+      </p>
+  </section>
+
+  <section class="card">
+      <div class="loan-summary">
+          <div class="loan-row">
+              <span class="loan-label">Leih-ID</span>
+              <span class="loan-value">#{{ loan.id }}</span>
+          </div>
+          <div class="loan-row">
+              <span class="loan-label">Kontakt</span>
+              <span class="loan-value email-value">{{ loan.contact_email }}</span>
+          </div>
+      </div>
+
+      <form method="post" class="form" enctype="multipart/form-data">
+          <div class="form-group">
+              <label for="photo">Rückgabefoto (optional)</label>
+              <input id="photo" type="file" name="photo">
+          </div>
+
+          <button type="submit" class="btn-primary full-width">
+              Rückgabe abschließen
+          </button>
+      </form>
+  </section>
+
+{% endblock %}
