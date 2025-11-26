@@ -97,9 +97,10 @@
     <section class="card-list">
       {% for loan in loans %}
         <article class="loan-card">
+
           <header class="loan-card-header">
               <div class="loan-box">
-                  <div class="loan-box-label">Box</div>
+                  {# FIX HIER: kleines "Box" entfernt #}
                   <div class="loan-box-code">{{ loan.box_code }}</div>
               </div>
 
@@ -135,6 +136,7 @@
                   Rückgabe starten
               </a>
           </footer>
+
         </article>
       {% endfor %}
     </section>
