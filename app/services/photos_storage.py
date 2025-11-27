@@ -56,4 +56,4 @@ def upload_initial_photo_for_loan(loan_id: int, file_storage) -> str:
 
     return bucket_key
 
-#seeeyyyuuhhh
+#seeeyyyuuhh
