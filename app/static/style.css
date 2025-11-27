@@ -253,6 +253,20 @@ html[data-theme="themeForest"] .theme-toggle {
   padding: 0.75rem 0.9rem;
   box-shadow: var(--shadow-small);
   border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-small);
+}
+
+
+.stat-card.active-stat {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 45px rgba(0,0,0,0.55);
+  border-color: var(--primary);
 }
 
 html[data-theme="themeForest"] .stat-card {

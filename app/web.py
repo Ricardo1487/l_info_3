@@ -39,22 +39,55 @@ def home():
     # Filterwerte aus der URL lesen
     sort = request.args.get("sort", "").strip()
     contact = request.args.get("contact", "").strip()
+    status_filter = request.args.get("status", "").strip()
 
-    # Alle Leihen wie bisher laden
-    loans = list_loans()
+    # Loans laden
+    loans_raw = list_loans()
 
-    # -------------------------------
-    # 1) Nach Kontakt (E-Mail) filtern
-    # -------------------------------
+    # -- Statistik --
+    open_loans = sum(1 for l in loans_raw if l["status"] in ("OPEN", "OVERDUE"))
+    returned_loans = sum(1 for l in loans_raw if l["status"] == "RETURNED")
+    missing_loans = sum(1 for l in loans_raw if l["status"] == "MISSING_ITEMS")
+
+    # -- Filter nach Kontakt --
     if contact:
         search = contact.lower()
+        loans_raw = [
+            l for l in loans_raw
+            if search in (l.get("contact_email", "").lower())
+        ]
 
-        def get_contact_value(loan):
-            value = getattr(loan, "contact_email", None)
-            return value.lower() if isinstance(value, str) else ""
+    if status_filter:
+        loans_raw = [l for l in loans_raw if l.get("status") == status_filter]
 
-        loans = [loan for loan in loans if search in get_contact_value(loan)]
+    # -- Sortierfunktionen --
+    def get_issue_date(loan):
+        return loan.get("planned_start_date")
 
+    def get_return_date(loan):
+        return loan.get("planned_end_date")
+
+    # -- Sortierung anwenden --
+    if sort == "issue_date_asc":
+        loans_raw = sorted(loans_raw, key=lambda l: get_issue_date(l) or date.max)
+    elif sort == "issue_date_desc":
+        loans_raw = sorted(loans_raw, key=lambda l: get_issue_date(l) or date.min, reverse=True)
+    elif sort == "return_date_asc":
+        loans_raw = sorted(loans_raw, key=lambda l: get_return_date(l) or date.max)
+    elif sort == "return_date_desc":
+        loans_raw = sorted(loans_raw, key=lambda l: get_return_date(l) or date.min, reverse=True)
+
+    return render_template(
+        "index.html",
+        title="Übersicht",
+        loans=loans_raw,
+        current_sort=sort,
+        current_contact=contact,
+        current_status=status_filter,
+        open_count=open_loans,
+        returned_count=returned_loans,
+        missing_count=missing_loans,
+    )
     # -------------------------------
     # 2) Sortierfunktionen definieren
     # -------------------------------

@@ -10,34 +10,29 @@
   {% if loans %}
     {# Kleine Stat-Kacheln oben #}
     <section class="stats-grid">
-        {% set open_count = loans|selectattr('status','equalto','OPEN')|list|length %}
-        {% set returned_count = loans|selectattr('status','equalto','RETURNED')|list|length %}
-        {% set missing_count = loans|selectattr('status','equalto','MISSING_ITEMS')|list|length %}
-        {% set total_count = loans|length %}
-
-        <article class="stat-card stat-total">
+        <a href="{{ url_for('home', status='') }}" class="stat-card stat-total {{ 'active-stat' if not current_status else '' }}">
             <span class="stat-label">Gesamt</span>
             <span class="stat-value">{{ total_count }}</span>
             <span class="stat-desc">Leihen im System</span>
-        </article>
+        </a>
 
-        <article class="stat-card stat-open">
+        <a href="{{ url_for('home', status='OPEN') }}" class="stat-card stat-open {{ 'active-stat' if current_status == 'OPEN' else '' }}">
             <span class="stat-label">Offen</span>
             <span class="stat-value">{{ open_count }}</span>
             <span class="stat-desc">Aktiv laufende Leihen</span>
-        </article>
+        </a>
 
-        <article class="stat-card stat-returned">
+        <a href="{{ url_for('home', status='RETURNED') }}" class="stat-card stat-returned {{ 'active-stat' if current_status == 'RETURNED' else '' }}">
             <span class="stat-label">Zurück</span>
             <span class="stat-value">{{ returned_count }}</span>
             <span class="stat-desc">Abgeschlossene Leihen</span>
-        </article>
+        </a>
 
-        <article class="stat-card stat-missing">
+        <a href="{{ url_for('home', status='MISSING_ITEMS') }}" class="stat-card stat-missing {{ 'active-stat' if current_status == 'MISSING_ITEMS' else '' }}">
             <span class="stat-label">Fehlende Teile</span>
             <span class="stat-value">{{ missing_count }}</span>
             <span class="stat-desc">MISSING_ITEMS</span>
-        </article>
+        </a>
     </section>
 
     {# === Filterleiste unter den Stat-Karten === #}
