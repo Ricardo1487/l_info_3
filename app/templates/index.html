@@ -49,11 +49,11 @@
 
     {# === Filterleiste unter den Stat-Karten === #}
     <form class="filter-card" method="get">
-        {# aktuellen Status (Gesamt / OPEN / RETURNED / MISSING_ITEMS) beibehalten #}
+        {# aktuellen Status (Gesamt / OPEN / RETURNED / MISSING_ITEMS / OVERDUE) beibehalten #}
         <input type="hidden" name="status" value="{{ current_status or '' }}">
 
         <div class="filter-row">
-            {# Sortierung nach Datum (Feld + Richtungspfeil) #}
+            {# Sortierung nach Feld + Richtungspfeil #}
             <div class="filter-group">
                 <label class="filter-label">Sortieren nach</label>
                 <div class="sort-group-inner">
@@ -62,9 +62,20 @@
                             {{ 'selected' if current_sort_field == 'issue_date' else '' }}>
                             Ausgabedatum
                         </option>
+
                         <option value="return_date"
-                            {{ 'selected' if current_sort_field != 'issue_date' else '' }}>
+                            {{ 'selected' if current_sort_field == 'return_date' else '' }}>
                             Rückgabedatum
+                        </option>
+
+                        <option value="loan_id"
+                            {{ 'selected' if current_sort_field == 'loan_id' else '' }}>
+                            Leih-ID (Erstelldatum)
+                        </option>
+
+                        <option value="box_number"
+                            {{ 'selected' if current_sort_field == 'box_number' else '' }}>
+                            Box-Nummer
                         </option>
                     </select>
 
