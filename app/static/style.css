@@ -319,8 +319,8 @@ html[data-theme="themeForest"] .stat-card {
 }
 
 .stat-total   { border-left: 3px solid var(--primary); }
-.stat-open    { border-left: 3px solid var(--warning); }
-.stat-returned{ border-left: 3px solid var(--success); }
+.stat-open    { border-left: 3px solid var(--success); }
+.stat-overdue { border-left: 3px solid var(--warning); }
 .stat-missing { border-left: 3px solid var(--danger); }
 
 /* ============================================================
@@ -387,14 +387,14 @@ html[data-theme="themeForest"] .loan-card {
   background: rgba(251, 191, 36, 0.95);
 }
 
-.status-returned {
-  color: #022c22;
-  background: rgba(45, 212, 191, 0.96);
-}
-
 .status-missing_items {
   color: #3f0c0c;
   background: rgba(248, 113, 113, 0.98);
+}
+
+.status-overdue {
+  color: #7c2d12;
+  background: rgba(251, 146, 60, 0.98); /* schönes Orange */
 }
 
 .loan-card-body {

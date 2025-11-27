@@ -28,11 +28,11 @@
             {% endif %}
         </a>
 
-        <a href="{{ url_for('home', status='RETURNED') }}" class="stat-card stat-returned {{ 'active-stat' if current_status == 'RETURNED' else '' }}">
-            <span class="stat-label">Zurück</span>
-            <span class="stat-value">{{ returned_count }}</span>
-            <span class="stat-desc">Abgeschlossene Leihen</span>
-            {% if current_status == 'RETURNED' %}
+        <a href="{{ url_for('home', status='OVERDUE') }}" class="stat-card stat-overdue {{ 'active-stat' if current_status == 'OVERDUE' else '' }}">
+            <span class="stat-label">Überfällig</span>
+            <span class="stat-value">{{ overdue_count }}</span>
+            <span class="stat-desc">Überfällige Leihen</span>
+            {% if current_status == 'OVERDUE' %}
                 <span class="stat-check">✔</span>
             {% endif %}
         </a>

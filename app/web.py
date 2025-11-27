@@ -50,9 +50,9 @@ def home():
         1 for l in all_loans
         if l.get("status") in ("OPEN", "OVERDUE")
     )
-    returned_loans = sum(
+    overdue_loans = sum(
         1 for l in all_loans
-        if l.get("status") == "RETURNED"
+        if l.get("status") == "OVERDUE"
     )
     missing_loans = sum(
         1 for l in all_loans
@@ -100,7 +100,7 @@ def home():
         current_status=status_filter,
         total_count=total_loans,     # GESAMT
         open_count=open_loans,       # OFFEN
-        returned_count=returned_loans,  # ZURÜCK
+        overdue_count=overdue_loans,    #UEBERFÄLLIG
         missing_count=missing_loans,    # FEHLENDE TEILE
     )
     # -- Sortierfunktionen --
