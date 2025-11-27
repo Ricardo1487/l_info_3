@@ -64,6 +64,18 @@ def home():
     # 5) Sortierung anwenden
     loans = sort_loans(loans, sort_field=sort_field, sort_dir=sort_dir)
 
+    # 5b) Datum formatiert hinzufügen (TT.MM.JJJJ)
+    for l in loans:
+        if isinstance(l.get("planned_start_date"), date):
+            l["planned_start_date_formatted"] = l["planned_start_date"].strftime("%d.%m.%Y")
+        else:
+            l["planned_start_date_formatted"] = l.get("planned_start_date")
+
+        if isinstance(l.get("planned_end_date"), date):
+            l["planned_end_date_formatted"] = l["planned_end_date"].strftime("%d.%m.%Y")
+        else:
+            l["planned_end_date_formatted"] = l.get("planned_end_date")
+
     # 6) Template rendern
     return render_template(
         "index.html",
