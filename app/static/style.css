@@ -1,40 +1,49 @@
-/* ========== THEME VARIABLES ========== */
+/* ============================================================
+   THEME VARIABLES
+   ============================================================ */
 
+/* 🌄 Theme 1 – Mountain Dark Earth */
+html[data-theme="themeMountain"],
 :root {
-  --bg: #050816;
-  --bg-soft: #0b1020;
-  --surface: #111827;
-  --surface-soft: #1f2937;
-  --text: #e5e7eb;
-  --text-soft: #9ca3af;
-  --primary: #6366f1;
-  --primary-soft: rgba(99,102,241,0.18);
-  --primary-hover: #4f46e5;
-  --radius-lg: 22px;
+  --bg: #0A0E0E;
+  --bg-soft: #151917;
+  --surface: #232622;
+  --surface-soft: #4A4A40;
+  --text: #F1E7D7;
+  --text-soft: #D8CBB1;
+  --primary: #8A6A54;
+  --primary-soft: rgba(138, 106, 84, 0.3);
+  --primary-hover: #755642;
+  --danger: #F97373;
+  --success: #3AC7A1;
+  --warning: #FBBF24;
+  --radius-lg: 24px;
   --radius-md: 14px;
-  --shadow-soft: 0 18px 45px rgba(0,0,0,0.5);
-  --shadow-small: 0 8px 20px rgba(0,0,0,0.35);
-  --danger: #f97373;
-  --success: #34d399;
-  --warning: #fbbf24;
+  --shadow-soft: 0 20px 50px rgba(0, 0, 0, 0.65);
+  --shadow-small: 0 10px 28px rgba(0, 0, 0, 0.55);
 }
 
-/* Light Mode Overrides */
-html[data-theme="light"] {
-  --bg: #f4f5fb;
-  --bg-soft: #e5e7f5;
-  --surface: #ffffff;
-  --surface-soft: #eef1ff;
-  --text: #111827;
-  --text-soft: #6b7280;
-  --primary: #4f46e5;
-  --primary-soft: rgba(79,70,229,0.16);
-  --primary-hover: #4338ca;
-  --shadow-soft: 0 18px 45px rgba(15,23,42,0.18);
-  --shadow-small: 0 8px 20px rgba(15,23,42,0.16);
+/* 🌲 Theme 2 – Forest Mist Green */
+html[data-theme="themeForest"] {
+  --bg: #F5F3EE;
+  --bg-soft: #E4D2B7;
+  --surface: #FFFFFF;
+  --surface-soft: #E4D2B7;
+  --text: #062F32;
+  --text-soft: #245D52;
+  --primary: #245D52;
+  --primary-soft: rgba(36, 93, 82, 0.15);
+  --primary-hover: #163f39;
+  --danger: #E76F51;
+  --success: #2A9D8F;
+  --warning: #E9C46A;
+  --shadow-soft: 0 18px 40px rgba(148, 163, 184, 0.35);
+  --shadow-small: 0 10px 26px rgba(148, 163, 184, 0.28);
 }
 
-/* ========== GLOBAL ========== */
+/* ============================================================
+   GLOBAL
+   ============================================================ */
 
 *,
 *::before,
@@ -45,24 +54,55 @@ html[data-theme="light"] {
 body.app-body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(circle at top left, #1d1b4c 0, var(--bg) 50%);
+  background:
+    radial-gradient(circle at top left, rgba(138,106,84,0.25) 0, transparent 40%),
+    var(--bg);
   color: var(--text);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-family: "Satoshi", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-/* ========== NAVBAR ========== */
+/* Layout-Breite + Padding */
+.app-main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1rem 1rem 4.6rem;
+}
+
+/* Links */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ============================================================
+   NAVBAR
+   ============================================================ */
 
 .navbar {
   position: sticky;
   top: 0;
-  z-index: 10;
-  padding: 0.9rem 1.2rem;
+  z-index: 20;
+  padding: 0.8rem 1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(90deg, var(--bg), rgba(5,8,22,0.96), var(--bg));
-  backdrop-filter: blur(18px);
-  border-bottom: 1px solid rgba(148,163,184,0.16);
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.6), rgba(10, 14, 14, 0.95)),
+    var(--bg);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+html[data-theme="themeForest"] .navbar {
+  background:
+    linear-gradient(90deg, rgba(245, 243, 238, 0.98), rgba(228, 210, 183, 0.94));
+  border-bottom-color: rgba(148, 163, 184, 0.35);
+}
+
+@media (min-width: 768px) {
+  .navbar {
+    padding: 0.9rem 1.6rem;
+  }
 }
 
 .nav-left {
@@ -72,10 +112,10 @@ body.app-body {
 }
 
 .logo-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 14px;
-  background: radial-gradient(circle at 30% 20%, #facc15, #fb7185);
+  width: 34px;
+  height: 34px;
+  border-radius: 16px;
+  background: radial-gradient(circle at 30% 20%, #FACC15, #FB923C);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -87,38 +127,48 @@ body.app-body {
   display: flex;
   flex-direction: column;
 }
+
 .logo-title {
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 600;
+  letter-spacing: 0.03em;
 }
+
 .logo-subtitle {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   color: var(--text-soft);
 }
 
 .nav-right {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.4rem;
 }
 
 .nav-links {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
 }
 
 .nav-link {
-  font-size: 0.8rem;
-  text-decoration: none;
-  color: var(--text-soft);
-  padding: 0.45rem 0.9rem;
+  font-size: 0.85rem;
+  padding: 0.45rem 0.95rem;
   border-radius: 999px;
+  color: var(--text-soft);
+  transition: background 0.18s ease, color 0.18s ease, transform 0.08s ease;
 }
 
 .nav-link:hover {
+  background: rgba(255, 255, 255, 0.06);
   color: var(--text);
-  background: rgba(148,163,184,0.14);
+  transform: translateY(-1px);
 }
 
 .nav-link-primary {
@@ -126,105 +176,169 @@ body.app-body {
   color: var(--primary);
   font-weight: 600;
 }
+
 .nav-link-primary:hover {
   background: var(--primary);
-  color: white;
+  color: #fff;
 }
 
 /* Theme Toggle Button */
+
 .theme-toggle {
   border-radius: 999px;
-  border: 1px solid rgba(148,163,184,0.4);
-  background: rgba(15,23,42,0.4);
-  width: 32px;
-  height: 32px;
-  display: flex;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(10, 14, 14, 0.8);
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   color: var(--text-soft);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0;
 }
+
+html[data-theme="themeForest"] .theme-toggle {
+  background: rgba(245, 243, 238, 0.9);
+  border-color: rgba(148, 163, 184, 0.6);
+}
+
 .theme-toggle:hover {
   border-color: var(--primary);
   color: var(--primary);
 }
-.theme-icon {
-  font-size: 1rem;
-}
 
-/* ========== MAIN LAYOUT ========== */
-
-.app-main {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 1.2rem 1.1rem 4.5rem;
-}
-
-/* ========== PAGE HEADER ========== */
+/* ============================================================
+   PAGE HEADER
+   ============================================================ */
 
 .page-header {
-  margin-bottom: 0.9rem;
+  margin-bottom: 1rem;
 }
+
 .page-title {
-  margin: 0 0 0.25rem;
-  font-size: 1.6rem;
+  margin: 0 0 0.3rem;
+  font-size: 1.7rem;
   letter-spacing: 0.02em;
 }
+
 .page-subtitle {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   color: var(--text-soft);
 }
 
-/* ========== STATS CARDS ========== */
+/* ============================================================
+   STATS CARDS
+   ============================================================ */
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.7rem;
-  margin-bottom: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-bottom: 1.2rem;
+}
+
+@media (min-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 .stat-card {
   background: radial-gradient(circle at top left, var(--surface-soft), var(--surface));
   border-radius: 18px;
-  padding: 0.7rem 0.9rem;
+  padding: 0.75rem 0.9rem;
   box-shadow: var(--shadow-small);
-  border: 1px solid rgba(148,163,184,0.18);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  position: relative;
+}
+
+.stat-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-small);
+}
+
+
+.stat-card.active-stat {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 45px rgba(0,0,0,0.55);
+  border-color: var(--primary);
+}
+
+.stat-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  opacity: 0;
+  transform: scale(0.7);
+  transition: all 0.18s ease;
+}
+
+.stat-card.active-stat .stat-check {
+  opacity: 1;
+  transform: scale(1);
+}
+
+html[data-theme="themeForest"] .stat-card {
+  border-color: rgba(148, 163, 184, 0.35);
 }
 
 .stat-label {
   font-size: 0.7rem;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   color: var(--text-soft);
 }
+
 .stat-value {
   display: block;
-  font-size: 1.15rem;
+  font-size: 1.25rem;
   font-weight: 700;
   margin-top: 0.1rem;
 }
+
 .stat-desc {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: var(--text-soft);
-  margin-top: 0.1rem;
+  margin-top: 0.15rem;
 }
 
 .stat-total   { border-left: 3px solid var(--primary); }
-.stat-open    { border-left: 3px solid var(--warning); }
-.stat-returned{ border-left: 3px solid var(--success); }
+.stat-open    { border-left: 3px solid var(--success); }
+.stat-overdue { border-left: 3px solid var(--warning); }
 .stat-missing { border-left: 3px solid var(--danger); }
 
-/* ========== CARDS ========== */
+/* ============================================================
+   CARDS / LOAN CARDS
+   ============================================================ */
 
 .card,
 .loan-card {
   background: radial-gradient(circle at top left, var(--surface-soft), var(--surface));
   border-radius: var(--radius-lg);
-  padding: 1.1rem 1.2rem;
+  padding: 1.1rem 1.15rem;
   box-shadow: var(--shadow-soft);
-  border: 1px solid rgba(148,163,184,0.18);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+html[data-theme="themeForest"] .card,
+html[data-theme="themeForest"] .loan-card {
+  border-color: rgba(148, 163, 184, 0.35);
 }
 
 .card-list {
@@ -233,31 +347,60 @@ body.app-body {
   gap: 0.9rem;
 }
 
-/* Loan Card */
+/* Loan Card Layout */
 
 .loan-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.65rem;
+  gap: 0.8rem;
+  margin-bottom: 0.6rem;
 }
 
 .loan-box-label {
-  font-size: 0.65rem;
+  font-size: 0.66rem;
   color: var(--text-soft);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
 }
+
 .loan-box-code {
   font-size: 1.05rem;
   font-weight: 600;
   margin-top: 0.1rem;
 }
 
+.status-pill {
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Status Colors */
+
+.status-open {
+  color: #1f2933;
+  background: rgba(251, 191, 36, 0.95);
+}
+
+.status-missing_items {
+  color: #3f0c0c;
+  background: rgba(248, 113, 113, 0.98);
+}
+
+.status-overdue {
+  color: #7c2d12;
+  background: rgba(251, 146, 60, 0.98); /* schönes Orange */
+}
+
 .loan-card-body {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.4rem;
   margin-top: 0.2rem;
 }
 
@@ -265,69 +408,48 @@ body.app-body {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  font-size: 0.8rem;
-  gap: 1rem;
+  font-size: 0.82rem;
+  gap: 1.2rem;
 }
+
 .loan-label {
   color: var(--text-soft);
 }
+
 .loan-value {
   font-weight: 500;
 }
+
 .email-value {
   font-size: 0.78rem;
   word-break: break-all;
 }
 
 .loan-card-footer {
-  margin-top: 0.9rem;
+  margin-top: 0.85rem;
   display: flex;
   justify-content: flex-end;
 }
 
-/* Status-Pills */
-
-.status-pill {
-  padding: 0.32rem 0.8rem;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  font-weight: 600;
-}
-
-.status-open {
-  color: #1f2933;
-  background: rgba(251, 191, 36, 0.9);
-}
-
-.status-returned {
-  color: #022c22;
-  background: rgba(45, 212, 191, 0.9);
-}
-
-.status-missing_items {
-  color: #3f0c0c;
-  background: rgba(248, 113, 113, 0.95);
-}
-
-/* ========== FORMS ========== */
+/* ============================================================
+   FORMS
+   ============================================================ */
 
 .form {
-  margin-top: 0.3rem;
+  margin-top: 0.4rem;
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
+  gap: 0.25rem;
 }
 
 .form-group {
-  margin-top: 0.6rem;
+  margin-top: 0.7rem;
 }
 
 .form-group-inline {
-  margin-top: 0.6rem;
+  margin-top: 0.7rem;
   display: flex;
-  gap: 0.7rem;
+  gap: 0.8rem;
 }
 
 .form-group-inline .form-group {
@@ -337,7 +459,7 @@ body.app-body {
 
 label {
   display: block;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   color: var(--text-soft);
   margin-bottom: 0.25rem;
 }
@@ -345,47 +467,51 @@ label {
 input[type="text"],
 input[type="email"],
 input[type="date"],
-input[type="file"] {
+input[type="file"],
+input[type="search"],
+select {
   width: 100%;
   background: var(--bg-soft);
   border-radius: var(--radius-md);
-  border: 1px solid rgba(148,163,184,0.4);
-  padding: 0.7rem 0.8rem;
-  font-size: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 0.7rem 0.85rem;
+  font-size: 0.9rem;
   color: var(--text);
   outline: none;
 }
 
-input:focus {
+html[data-theme="themeForest"] input[type="text"],
+html[data-theme="themeForest"] input[type="email"],
+html[data-theme="themeForest"] input[type="date"],
+html[data-theme="themeForest"] input[type="file"],
+html[data-theme="themeForest"] input[type="search"],
+html[data-theme="themeForest"] select {
+  background: #FBF8F3;
+  border-color: rgba(148, 163, 184, 0.45);
+}
+
+input:focus,
+select:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 1px rgba(99,102,241,0.6);
+  box-shadow: 0 0 0 1px var(--primary-soft);
 }
 
-.alert-error {
-  background: rgba(248,113,113,0.15);
-  border: 1px solid #f87171;
-  color: #fecaca;
-  padding: 0.75rem 1rem;
-  border-radius: 0.75rem;
-  margin-bottom: 1rem;
-  font-size: 0.9rem;
-}
-
-/* ========== BUTTONS ========== */
+/* ============================================================
+   BUTTONS
+   ============================================================ */
 
 .btn-primary,
 button {
-  background: radial-gradient(circle at top left, var(--primary), var(--primary-hover));
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
   border-radius: 999px;
   border: none;
-  color: white;
-  padding: 0.75rem 1.3rem;
-  font-size: 0.86rem;
+  color: #fff;
+  padding: 0.8rem 1.35rem;
+  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
   box-shadow: var(--shadow-small);
-  transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.1s ease;
-  text-decoration: none;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -393,29 +519,54 @@ button {
 
 .btn-primary:hover,
 button:hover {
-  background: radial-gradient(circle at top left, var(--primary-hover), var(--primary));
   transform: translateY(-1px);
-  box-shadow: 0 10px 30px rgba(79,70,229,0.6);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.45);
 }
 
 .full-width {
   width: 100%;
 }
 
-/* ========== BOTTOM NAV (MOBILE) ========== */
+/* ============================================================
+   ERROR BOX (für new_loan.html)
+   ============================================================ */
+
+.error-box {
+  background: rgba(255, 70, 70, 0.2);
+  border: 1px solid rgba(255, 80, 80, 0.4);
+  padding: 11px 15px;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  color: #ffe3e3;
+  font-weight: 600;
+}
+
+html[data-theme="themeForest"] .error-box {
+  background: rgba(255, 209, 209, 0.9);
+  color: #7c1a1a;
+}
+
+/* ============================================================
+   BOTTOM NAV (MOBILE)
+   ============================================================ */
 
 .bottom-nav {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 0.45rem 1.3rem env(safe-area-inset-bottom);
-  background: rgba(15,23,42,0.96);
-  backdrop-filter: blur(18px);
-  border-top: 1px solid rgba(148,163,184,0.18);
-  display: none;
+  padding: 0.5rem 1.2rem calc(0.6rem + env(safe-area-inset-bottom));
+  background: rgba(10, 14, 14, 0.96);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
   justify-content: space-between;
-  z-index: 12;
+  z-index: 25;
+}
+
+html[data-theme="themeForest"] .bottom-nav {
+  background: rgba(245, 243, 238, 0.98);
+  border-top-color: rgba(148, 163, 184, 0.4);
 }
 
 .bottom-nav-item {
@@ -424,45 +575,173 @@ button:hover {
   flex-direction: column;
   align-items: center;
   gap: 0.18rem;
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   text-decoration: none;
   color: var(--text-soft);
 }
 
 .bottom-nav-icon {
-  font-size: 1.15rem;
+  font-size: 1.2rem;
 }
 
-/* ========== RESPONSIVE ========== */
-
-@media (max-width: 768px) {
-  .nav-links {
+/* Desktop: Bottom-Nav ausblenden */
+@media (min-width: 768px) {
+  .bottom-nav {
     display: none;
   }
+}
 
-  .app-main {
-    padding: 1rem 0.95rem 4.5rem;
-  }
+/* ============================================================
+   RESPONSIVE TWEAKS
+   ============================================================ */
 
-  .stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
+@media (max-width: 768px) {
   .loan-card,
   .card {
     padding: 1rem 0.95rem;
   }
 
   .loan-row {
-    font-size: 0.78rem;
-  }
-
-  .bottom-nav {
-    display: flex;
+    font-size: 0.8rem;
   }
 
   .form-group-inline {
     flex-direction: column;
   }
+
+  .page-title {
+    font-size: 1.45rem;
+  }
+
+  .app-main {
+    padding: 0.9rem 0.9rem 4.6rem;
+  }
 }
 
+/* ============================================================
+   FILTER-LEISTE (unter den Stat-Karten)
+   ============================================================ */
+
+.filter-card {
+  margin-top: 1.3rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.15rem;
+  border-radius: 20px;
+  background: rgba(10, 14, 14, 0.9);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+html[data-theme="themeForest"] .filter-card {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(148, 163, 184, 0.4);
+  box-shadow: 0 16px 36px rgba(148, 163, 184, 0.35);
+}
+
+@media (min-width: 768px) {
+  .filter-card {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  width: 100%;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+}
+
+.filter-group-grow {
+  flex: 1 1 220px;
+}
+
+.filter-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  opacity: 0.85;
+  margin-bottom: 0.25rem;
+}
+
+.filter-select,
+.filter-input {
+  padding: 0.55rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(13, 19, 19, 0.95);
+  color: inherit;
+  font: inherit;
+  outline: none;
+}
+
+html[data-theme="themeForest"] .filter-select,
+html[data-theme="themeForest"] .filter-input {
+  background: #FBF8F3;
+  border-color: rgba(148, 163, 184, 0.5);
+}
+
+.filter-select:focus,
+.filter-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px rgba(255, 214, 107, 0.25);
+}
+
+.filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.filter-button-primary,
+.filter-button-reset {
+  padding: 0.6rem 1.05rem;
+  border-radius: 999px;
+  border: none;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.filter-button-primary {
+  background: linear-gradient(135deg, #FFD66B, #FF8C6B);
+  color: #101320;
+  font-weight: 600;
+}
+
+.filter-button-primary:hover {
+  filter: brightness(1.05);
+}
+
+.filter-button-reset {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: inherit;
+  font-weight: 500;
+}
+
+html[data-theme="themeForest"] .filter-button-reset {
+  border-color: rgba(148, 163, 184, 0.5);
+}
+
+.filter-button-reset:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+html[data-theme="themeForest"] .filter-button-reset:hover {
+  background: rgba(148, 163, 184, 0.16);
+}

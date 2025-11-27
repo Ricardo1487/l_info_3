@@ -10,43 +10,104 @@
   {% if loans %}
     {# Kleine Stat-Kacheln oben #}
     <section class="stats-grid">
-        {% set open_count = loans|selectattr('status','equalto','OPEN')|list|length %}
-        {% set returned_count = loans|selectattr('status','equalto','RETURNED')|list|length %}
-        {% set missing_count = loans|selectattr('status','equalto','MISSING_ITEMS')|list|length %}
-        {% set total_count = loans|length %}
-
-        <article class="stat-card stat-total">
+        <a href="{{ url_for('home', status='') }}" class="stat-card stat-total {{ 'active-stat' if not current_status else '' }}">
             <span class="stat-label">Gesamt</span>
             <span class="stat-value">{{ total_count }}</span>
             <span class="stat-desc">Leihen im System</span>
-        </article>
+            {% if not current_status %}
+                <span class="stat-check">✔</span>
+            {% endif %}
+        </a>
 
-        <article class="stat-card stat-open">
+        <a href="{{ url_for('home', status='OPEN') }}" class="stat-card stat-open {{ 'active-stat' if current_status == 'OPEN' else '' }}">
             <span class="stat-label">Offen</span>
             <span class="stat-value">{{ open_count }}</span>
             <span class="stat-desc">Aktiv laufende Leihen</span>
-        </article>
+            {% if current_status == 'OPEN' %}
+                <span class="stat-check">✔</span>
+            {% endif %}
+        </a>
 
-        <article class="stat-card stat-returned">
-            <span class="stat-label">Zurück</span>
-            <span class="stat-value">{{ returned_count }}</span>
-            <span class="stat-desc">Abgeschlossene Leihen</span>
-        </article>
+        <a href="{{ url_for('home', status='OVERDUE') }}" class="stat-card stat-overdue {{ 'active-stat' if current_status == 'OVERDUE' else '' }}">
+            <span class="stat-label">Überfällig</span>
+            <span class="stat-value">{{ overdue_count }}</span>
+            <span class="stat-desc">Überfällige Leihen</span>
+            {% if current_status == 'OVERDUE' %}
+                <span class="stat-check">✔</span>
+            {% endif %}
+        </a>
 
-        <article class="stat-card stat-missing">
+        <a href="{{ url_for('home', status='MISSING_ITEMS') }}" class="stat-card stat-missing {{ 'active-stat' if current_status == 'MISSING_ITEMS' else '' }}">
             <span class="stat-label">Fehlende Teile</span>
             <span class="stat-value">{{ missing_count }}</span>
             <span class="stat-desc">MISSING_ITEMS</span>
-        </article>
+            {% if current_status == 'MISSING_ITEMS' %}
+                <span class="stat-check">✔</span>
+            {% endif %}
+        </a>
     </section>
+
+    {# === Filterleiste unter den Stat-Karten === #}
+    <form class="filter-card" method="get">
+        <div class="filter-row">
+            {# Sortierung nach Datum #}
+            <div class="filter-group">
+                <label for="sort" class="filter-label">Sortieren nach</label>
+                <select id="sort" name="sort" class="filter-select">
+                    <option value="">Keine Sortierung</option>
+                    <option value="issue_date_asc"
+                        {{ 'selected' if current_sort == 'issue_date_asc' else '' }}>
+                        Ausgabedatum ↑
+                    </option>
+                    <option value="issue_date_desc"
+                        {{ 'selected' if current_sort == 'issue_date_desc' else '' }}>
+                        Ausgabedatum ↓
+                    </option>
+                    <option value="return_date_asc"
+                        {{ 'selected' if current_sort == 'return_date_asc' else '' }}>
+                        Rückgabedatum ↑
+                    </option>
+                    <option value="return_date_desc"
+                        {{ 'selected' if current_sort == 'return_date_desc' else '' }}>
+                        Rückgabedatum ↓
+                    </option>
+                </select>
+            </div>
+
+            {# Suche nach Kontakt-E-Mail #}
+            <div class="filter-group filter-group-grow">
+                <label for="contact" class="filter-label">Kontakt (E-Mail)</label>
+                <input
+                    type="search"
+                    id="contact"
+                    name="contact"
+                    class="filter-input"
+                    placeholder="E-Mail der leihenden Person"
+                    value="{{ current_contact or '' }}"
+                >
+            </div>
+
+            {# Buttons #}
+            <div class="filter-actions">
+                <button type="submit" class="filter-button-primary">
+                    Anwenden
+                </button>
+                <a href="{{ url_for('home') }}" class="filter-button-reset">
+                    Zurücksetzen
+                </a>
+            </div>
+        </div>
+    </form>
+    {# === Ende Filterleiste === #}
 
     {# Karten-Liste mit allen Leihen #}
     <section class="card-list">
       {% for loan in loans %}
         <article class="loan-card">
+
           <header class="loan-card-header">
               <div class="loan-box">
-                  <div class="loan-box-label">Box</div>
+                  {# FIX HIER: kleines "Box" entfernt #}
                   <div class="loan-box-code">{{ loan.box_code }}</div>
               </div>
 
@@ -82,6 +143,7 @@
                   Rückgabe starten
               </a>
           </footer>
+
         </article>
       {% endfor %}
     </section>
@@ -91,4 +153,3 @@
   {% endif %}
 
 {% endblock %}
-
