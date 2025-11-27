@@ -49,29 +49,41 @@
 
     {# === Filterleiste unter den Stat-Karten === #}
     <form class="filter-card" method="get">
+        {# aktuellen Status (Gesamt / OPEN / RETURNED / MISSING_ITEMS) beibehalten #}
+        <input type="hidden" name="status" value="{{ current_status or '' }}">
+
         <div class="filter-row">
-            {# Sortierung nach Datum #}
+            {# Sortierung nach Datum (Feld + Richtungspfeil) #}
             <div class="filter-group">
-                <label for="sort" class="filter-label">Sortieren nach</label>
-                <select id="sort" name="sort" class="filter-select">
-                    <option value="">Keine Sortierung</option>
-                    <option value="issue_date_asc"
-                        {{ 'selected' if current_sort == 'issue_date_asc' else '' }}>
-                        Ausgabedatum ↑
-                    </option>
-                    <option value="issue_date_desc"
-                        {{ 'selected' if current_sort == 'issue_date_desc' else '' }}>
-                        Ausgabedatum ↓
-                    </option>
-                    <option value="return_date_asc"
-                        {{ 'selected' if current_sort == 'return_date_asc' else '' }}>
-                        Rückgabedatum ↑
-                    </option>
-                    <option value="return_date_desc"
-                        {{ 'selected' if current_sort == 'return_date_desc' else '' }}>
-                        Rückgabedatum ↓
-                    </option>
-                </select>
+                <label class="filter-label">Sortieren nach</label>
+                <div class="sort-group-inner">
+                    <select id="sort_field" name="sort_field" class="filter-select">
+                        <option value="issue_date"
+                            {{ 'selected' if current_sort_field == 'issue_date' else '' }}>
+                            Ausgabedatum
+                        </option>
+                        <option value="return_date"
+                            {{ 'selected' if current_sort_field != 'issue_date' else '' }}>
+                            Rückgabedatum
+                        </option>
+                    </select>
+
+                    {# verstecktes Feld für Richtung #}
+                    <input type="hidden"
+                           id="sort_dir"
+                           name="sort_dir"
+                           value="{{ current_sort_dir or 'asc' }}">
+
+                    {# Button mit Pfeil, der nur die Richtung umschaltet #}
+                    <button type="button"
+                            class="sort-dir-toggle"
+                            id="sort-dir-toggle"
+                            aria-label="Sortierreihenfolge wechseln">
+                        <span id="sort-dir-arrow">
+                            {{ '▲' if (current_sort_dir or 'asc') == 'asc' else '▼' }}
+                        </span>
+                    </button>
+                </div>
             </div>
 
             {# Suche nach Kontakt-E-Mail #}
@@ -107,7 +119,6 @@
 
           <header class="loan-card-header">
               <div class="loan-box">
-                  {# FIX HIER: kleines "Box" entfernt #}
                   <div class="loan-box-code">{{ loan.box_code }}</div>
               </div>
 
@@ -151,5 +162,25 @@
   {% else %}
     <p>Aktuell sind keine Leihen vorhanden.</p>
   {% endif %}
+
+  <script>
+  document.addEventListener('DOMContentLoaded', function () {
+      const dirInput = document.getElementById('sort_dir');
+      const btn = document.getElementById('sort-dir-toggle');
+      const arrow = document.getElementById('sort-dir-arrow');
+
+      if (!dirInput || !btn || !arrow) return;
+
+      btn.addEventListener('click', function () {
+          if (dirInput.value === 'asc') {
+              dirInput.value = 'desc';
+              arrow.textContent = '▼';
+          } else {
+              dirInput.value = 'asc';
+              arrow.textContent = '▲';
+          }
+      });
+  });
+  </script>
 
 {% endblock %}

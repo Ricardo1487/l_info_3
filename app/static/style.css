@@ -745,3 +745,144 @@ html[data-theme="themeForest"] .filter-button-reset {
 html[data-theme="themeForest"] .filter-button-reset:hover {
   background: rgba(148, 163, 184, 0.16);
 }
+
+
+/* ============================================================
+   FILTER & SORT BAR
+   ============================================================ */
+
+.filter-card {
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.25rem;
+    border-radius: 18px;
+    background: rgba(13, 22, 46, 0.9);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* Desktop: alles in einer Reihe */
+@media (min-width: 768px) {
+    .filter-card {
+        flex-direction: row;
+        align-items: flex-end;
+        justify-content: space-between;
+    }
+}
+
+.filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1rem;
+    width: 100%;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    min-width: 180px;
+}
+
+.filter-group-grow {
+    flex: 1 1 220px;
+}
+
+.filter-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.7;
+    margin-bottom: 0.25rem;
+}
+
+.filter-select,
+.filter-input {
+    padding: 0.5rem 0.75rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(10, 16, 32, 0.9);
+    color: inherit;
+    font: inherit;
+    outline: none;
+}
+
+.filter-select:focus,
+.filter-input:focus {
+    border-color: #ffd66b;
+    box-shadow: 0 0 0 1px rgba(255, 214, 107, 0.3);
+}
+
+.filter-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: flex-end;
+}
+
+.filter-button-primary,
+.filter-button-reset {
+    padding: 0.55rem 1rem;
+    border-radius: 999px;
+    border: none;
+    font-size: 0.9rem;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.filter-button-primary {
+    background: linear-gradient(135deg, #ffd66b, #ff8c6b);
+    color: #101320;
+    font-weight: 600;
+}
+
+.filter-button-primary:hover {
+    filter: brightness(1.05);
+}
+
+.filter-button-reset {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: inherit;
+    font-weight: 500;
+}
+
+.filter-button-reset:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Sortierfeld + Pfeilbutton */
+
+.sort-group-inner {
+    display: flex;
+    gap: 0.5rem;
+    align-items: stretch;
+}
+
+.sort-group-inner .filter-select {
+    flex: 1 1 auto;
+}
+
+.sort-dir-toggle {
+    padding: 0.5rem 0.75rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(10, 16, 32, 0.9);
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.5rem;
+}
+
+.sort-dir-toggle:hover {
+    border-color: #ffd66b;
+    box-shadow: 0 0 0 1px rgba(255, 214, 107, 0.3);
+}

@@ -37,7 +37,11 @@ app = Flask(__name__)
 @app.route("/")
 def home():
     # Filterwerte aus der URL lesen
-    sort = request.args.get("sort", "").strip()
+    sort_field = request.args.get("sort_field", "return_date").strip()  # Standard: Rückgabedatum
+    sort_dir = request.args.get("sort_dir", "asc").strip().lower()      # Standard: aufsteigend
+    if sort_dir not in ("asc", "desc"):
+        sort_dir = "asc"
+
     contact = request.args.get("contact", "").strip()
     status_filter = request.args.get("status", "").strip()
 
@@ -57,6 +61,7 @@ def home():
             if search in (l.get("contact_email", "").lower())
         ]
 
+    # -- Filter nach Status --
     if status_filter:
         loans_raw = [l for l in loans_raw if l.get("status") == status_filter]
 
@@ -67,74 +72,35 @@ def home():
     def get_return_date(loan):
         return loan.get("planned_end_date")
 
+    # Welches Feld wird sortiert?
+    if sort_field == "issue_date":
+        key_func = get_issue_date
+    else:
+        # Fallback + Standard: Rückgabedatum
+        sort_field = "return_date"
+        key_func = get_return_date
+
     # -- Sortierung anwenden --
-    if sort == "issue_date_asc":
-        loans_raw = sorted(loans_raw, key=lambda l: get_issue_date(l) or date.max)
-    elif sort == "issue_date_desc":
-        loans_raw = sorted(loans_raw, key=lambda l: get_issue_date(l) or date.min, reverse=True)
-    elif sort == "return_date_asc":
-        loans_raw = sorted(loans_raw, key=lambda l: get_return_date(l) or date.max)
-    elif sort == "return_date_desc":
-        loans_raw = sorted(loans_raw, key=lambda l: get_return_date(l) or date.min, reverse=True)
+    if sort_dir == "asc":
+        loans_raw = sorted(loans_raw, key=lambda l: key_func(l) or date.max)
+    else:
+        loans_raw = sorted(loans_raw, key=lambda l: key_func(l) or date.min, reverse=True)
 
     return render_template(
         "index.html",
         title="Übersicht",
         loans=loans_raw,
-        current_sort=sort,
+        current_sort_field=sort_field,
+        current_sort_dir=sort_dir,
         current_contact=contact,
         current_status=status_filter,
         open_count=open_loans,
         returned_count=returned_loans,
         missing_count=missing_loans,
+        # optional, falls irgendwo noch benutzt:
+        current_sort=f"{sort_field}_{sort_dir}",
     )
-    # -------------------------------
-    # 2) Sortierfunktionen definieren
-    # -------------------------------
-    def get_issue_date(loan):
-        # Ausgabedatum (geplant)
-        return getattr(loan, "planned_start_date", None)
 
-    def get_return_date(loan):
-        # Rückgabedatum (geplant)
-        return getattr(loan, "planned_end_date", None)
-
-    # -------------------------------
-    # 3) Sortierung anwenden
-    # -------------------------------
-    if sort == "issue_date_asc":
-        loans = sorted(
-            loans,
-            key=lambda l: get_issue_date(l) or date.max
-        )
-    elif sort == "issue_date_desc":
-        loans = sorted(
-            loans,
-            key=lambda l: get_issue_date(l) or date.min,
-            reverse=True,
-        )
-    elif sort == "return_date_asc":
-        loans = sorted(
-            loans,
-            key=lambda l: get_return_date(l) or date.max
-        )
-    elif sort == "return_date_desc":
-        loans = sorted(
-            loans,
-            key=lambda l: get_return_date(l) or date.min,
-            reverse=True,
-        )
-
-    # -------------------------------
-    # 4) Template rendern
-    # -------------------------------
-    return render_template(
-        "index.html",
-        title="Übersicht",
-        loans=loans,
-        current_sort=sort,
-        current_contact=contact,
-    )
 
 
 # ---------------------------------------------------
