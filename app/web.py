@@ -36,7 +36,9 @@ app = Flask(__name__)
 # ---------------------------------------------------
 @app.route("/")
 def home():
-    # Filterwerte aus der URL lesen
+    # -----------------------------
+    # 1) Filterwerte aus der URL
+    # -----------------------------
     sort_field = request.args.get("sort_field", "return_date").strip()  # Standard: Rückgabedatum
     sort_dir = request.args.get("sort_dir", "asc").strip().lower()      # Standard: aufsteigend
     if sort_dir not in ("asc", "desc"):
@@ -45,28 +47,24 @@ def home():
     contact = request.args.get("contact", "").strip()
     status_filter = request.args.get("status", "").strip()
 
-    # Alle Loans laden (für Statistik & Liste)
+    # -----------------------------
+    # 2) Alle Loans laden
+    # -----------------------------
     all_loans = list_loans()
 
-    # -------- Statistik über ALLE Leihen (unabhängig vom Filter) --------
+    # Statistik über ALLE Leihen (unabhängig vom Filter)
     total_loans = len(all_loans)
-    open_loans = sum(
-        1 for l in all_loans
-        if l.get("status") in ("OPEN", "OVERDUE")
-    )
-    overdue_loans = sum(
-        1 for l in all_loans
-        if l.get("status") == "OVERDUE"
-    )
-    missing_loans = sum(
-        1 for l in all_loans
-        if l.get("status") == "MISSING_ITEMS"
-    )
+    open_loans = sum(1 for l in all_loans if l.get("status") in ("OPEN", "OVERDUE"))
+    returned_loans = sum(1 for l in all_loans if l.get("status") == "RETURNED")
+    missing_loans = sum(1 for l in all_loans if l.get("status") == "MISSING_ITEMS")
+    overdue_loans = sum(1 for l in all_loans if l.get("status") == "OVERDUE")
 
-    # Arbeitskopie für die gefilterte/ sortierte Liste
+    # Arbeitskopie für die gefilterte/sortierte Liste
     loans = list(all_loans)
 
-    # -------- Filter nach Kontakt (E-Mail) --------
+    # -----------------------------
+    # 3) Filter nach Kontakt (E-Mail)
+    # -----------------------------
     if contact:
         search = contact.lower()
         loans = [
@@ -74,40 +72,15 @@ def home():
             if search in l.get("contact_email", "").lower()
         ]
 
-    # -------- Filter nach Status (von den Karten oben) --------
+    # -----------------------------
+    # 4) Filter nach Status
+    # -----------------------------
     if status_filter:
         loans = [l for l in loans if l.get("status") == status_filter]
 
-    # -------- Sortierfunktionen --------
-    def get_issue_date(loan):
-        return loan.get("planned_start_date")
-
-    def get_return_date(loan):
-        return loan.get("planned_end_date")
-
-    if sort == "issue_date_asc":
-        loans = sorted(loans, key=lambda l: get_issue_date(l) or date.max)
-    elif sort == "issue_date_desc":
-        loans = sorted(loans, key=lambda l: get_issue_date(l) or date.min, reverse=True)
-    elif sort == "return_date_asc":
-        loans = sorted(loans, key=lambda l: get_return_date(l) or date.max)
-    elif sort == "return_date_desc":
-        loans = sorted(loans, key=lambda l: get_return_date(l) or date.min, reverse=True)
-
-    # -------- Template rendern --------
-    return render_template(
-        "index.html",
-        title="Übersicht",
-        loans=loans,                 # gefilterte + sortierte Liste
-        current_sort=sort,
-        current_contact=contact,
-        current_status=status_filter,
-        total_count=total_loans,     # GESAMT
-        open_count=open_loans,       # OFFEN
-        overdue_count=overdue_loans,    #UEBERFÄLLIG
-        missing_count=missing_loans,    # FEHLENDE TEILE
-    )
-    # -- Sortierfunktionen --
+    # -----------------------------
+    # 5) Sortierfunktionen
+    # -----------------------------
     def get_issue_date(loan):
         return loan.get("planned_start_date")
 
@@ -122,26 +95,33 @@ def home():
         sort_field = "return_date"
         key_func = get_return_date
 
-    # -- Sortierung anwenden --
+    # Sortierung anwenden
     if sort_dir == "asc":
-        loans_raw = sorted(loans_raw, key=lambda l: key_func(l) or date.max)
+        loans = sorted(loans, key=lambda l: key_func(l) or date.max)
     else:
-        loans_raw = sorted(loans_raw, key=lambda l: key_func(l) or date.min, reverse=True)
+        loans = sorted(loans, key=lambda l: key_func(l) or date.min, reverse=True)
 
+    # -----------------------------
+    # 6) Template rendern
+    # -----------------------------
     return render_template(
         "index.html",
         title="Übersicht",
-        loans=loans_raw,
+        loans=loans,                 # gefilterte + sortierte Liste
         current_sort_field=sort_field,
         current_sort_dir=sort_dir,
+        # für ältere Template-Stellen zur Sicherheit:
+        current_sort=f"{sort_field}_{sort_dir}",
         current_contact=contact,
         current_status=status_filter,
-        open_count=open_loans,
+        # Statistik-Kacheln
+        total_count=total_loans,     # GESAMT
+        open_count=open_loans,       # OFFEN
         returned_count=returned_loans,
         missing_count=missing_loans,
-        # optional, falls irgendwo noch benutzt:
-        current_sort=f"{sort_field}_{sort_dir}",
+        overdue_count=overdue_loans,  # falls ihr mal eine „Überfällig“-Kachel baut
     )
+
 
 
 
