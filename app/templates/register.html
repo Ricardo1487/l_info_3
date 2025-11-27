@@ -3,13 +3,21 @@
 {% block content %}
 
 <section class="page-header">
-    <h1 class="page-title">Registrierung</h1>
-    <p class="page-subtitle">Erstelle ein neues Benutzerkonto.</p>
+    <h1 class="page-title">Benutzer anlegen</h1>
+    <p class="page-subtitle">Als Admin kannst du hier neue HiWis oder Admins anlegen.</p>
 </section>
 
 {% if message %}
 <div class="alert alert-error">
     {{ message }}
+</div>
+{% endif %}
+
+{% if initial_password %}
+<div class="alert alert-success">
+    Benutzer wurde angelegt. Initialpasswort:
+    <strong>{{ initial_password }}</strong><br>
+    Bitte dem Benutzer sicher mitteilen.
 </div>
 {% endif %}
 
@@ -20,39 +28,29 @@
         <!-- Name -->
         <div class="form-group">
             <label for="name">Name</label>
-            <input id="name" name="name" type="text" required>
+            <input id="name" name="name" type="text" required value="{{ name or '' }}">
         </div>
 
         <!-- E-Mail -->
         <div class="form-group">
             <label for="email">E-Mail</label>
-            <input id="email" name="email" type="email" required>
+            <input id="email" name="email" type="email" required value="{{ email or '' }}">
         </div>
 
-        <!-- Passwort -->
+        <!-- Rolle -->
         <div class="form-group">
-            <label for="password">Passwort</label>
-            <input id="password" name="password" type="password" required>
-        </div>
-
-        <!-- Passwort bestätigen -->
-        <div class="form-group">
-            <label for="password_confirm">Passwort bestätigen</label>
-            <input id="password_confirm" name="password_confirm" type="password" required>
+            <label for="role">Rolle</label>
+            <select id="role" name="role">
+                <option value="HIWI" {% if role == "HIWI" %}selected{% endif %}>HiWi</option>
+                <option value="ADMIN" {% if role == "ADMIN" %}selected{% endif %}>Admin</option>
+            </select>
         </div>
 
         <button class="btn-primary full-width" style="margin-top: 0.8rem;">
-            Registrieren
+            Benutzer anlegen
         </button>
 
     </form>
-
-    <p style="margin-top: 1rem; font-size: 0.8rem; text-align: center;">
-        Bereits registriert?
-        <a href="{{ url_for('login_page') }}" style="color: var(--primary); text-decoration: none;">
-            Zum Login →
-        </a>
-    </p>
 
 </section>
 

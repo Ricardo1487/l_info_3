@@ -2,10 +2,15 @@ from dotenv import load_dotenv  # .env laden (für Supabase etc.)
 load_dotenv()
 
 from datetime import date
-from flask import Flask, render_template, request, redirect, url_for, abort, jsonify
+from flask import Flask, render_template, request, redirect, url_for, abort, jsonify, session, flash
 
 from sqlalchemy import text
 from app.config.database import SessionLocal
+
+import os
+import bcrypt
+from functools import wraps
+
 
 # loans importieren
 from app.services.loans import (
@@ -27,14 +32,200 @@ from app.services.boxes import (
 from app.services.photos_storage import (
     upload_initial_photo_for_loan,
 )
+# user services importieren
+from app.services.users import (
+    get_user_by_email,
+    get_user_by_id,
+    create_user,
+    list_users,
+    delete_user,
+    update_password,
+    ROLE_ADMIN,
+    ROLE_HIWI,
+)
 
 app = Flask(__name__)
+app.secret_key = os.getenv("SECRET_KEY", "dev_key_change_me")
+# ---------------------------------------------------
+# Authentifizierung / User-Helfer
+# ---------------------------------------------------
+def login_required(view_func):
+    @wraps(view_func)
+    def wrapper(*args, **kwargs):
+        if "user_id" not in session:
+            flash("Bitte melde dich zuerst an.", "error")
+            return redirect(url_for("login"))
+        return view_func(*args, **kwargs)
+    return wrapper
 
+
+def admin_required(view_func):
+    @wraps(view_func)
+    def wrapper(*args, **kwargs):
+        if "user_id" not in session:
+            flash("Bitte melde dich zuerst an.", "error")
+            return redirect(url_for("login"))
+
+        if session.get("user_role") != ROLE_ADMIN:
+            abort(403)
+
+        return view_func(*args, **kwargs)
+    return wrapper
+
+# =====================================================================
+# Authentifizierung – LOGIN / LOGOUT / REGISTER
+# =====================================================================
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "GET":
+        return render_template("login.html", title="Login")
+
+    email = request.form.get("email", "").strip().lower()
+    password = request.form.get("password", "")
+
+    user = get_user_by_email(email)
+    if not user:
+        return render_template(
+            "login.html",
+            title="Login",
+            message="Ungültige E-Mail oder Passwort."
+        )
+
+    stored_hash = user["password_hash"]
+    if not bcrypt.checkpw(password.encode("utf-8"), stored_hash.encode("utf-8")):
+        return render_template(
+            "login.html",
+            title="Login",
+            message="Ungültige E-Mail oder Passwort."
+        )
+
+    # Login successful
+    session["user_id"] = user["id"]
+    session["user_name"] = user["username"]
+    session["user_role"] = user["role"]
+
+    flash("Login erfolgreich!", "success")
+    return redirect(url_for("home"))
+
+
+@app.route("/logout")
+@login_required
+def logout():
+    session.clear()
+    flash("Abgemeldet.", "info")
+    return redirect(url_for("login"))
+
+# ---------------------------------------------------------------------
+# ADMIN: Benutzer anlegen
+# ---------------------------------------------------------------------
+import secrets
+
+@app.route("/register", methods=["GET", "POST"])
+@admin_required
+def register():
+    if request.method == "GET":
+        return render_template("register.html", title="Benutzer anlegen")
+
+    username = request.form.get("name", "").strip()
+    email = request.form.get("email", "").strip().lower()
+    role = request.form.get("role", ROLE_HIWI)
+
+    if not username or not email:
+        return render_template(
+            "register.html",
+            title="Benutzer anlegen",
+            message="Bitte Name und E-Mail ausfüllen.",
+            name=username,
+            email=email,
+            role=role,
+        )
+
+    initial_password = secrets.token_urlsafe(8)
+
+    try:
+        create_user(username, email, initial_password, role)
+    except ValueError as e:
+        return render_template(
+            "register.html",
+            title="Benutzer anlegen",
+            message=str(e),
+            name=username,
+            email=email,
+            role=role,
+        )
+
+    flash("Benutzer wurde angelegt!", "success")
+    return render_template(
+        "register.html",
+        title="Benutzer anlegen",
+        initial_password=initial_password,
+    )
+
+# ---------------------------------------------------------------------
+# Passwort ändern
+# ---------------------------------------------------------------------
+@app.route("/change-password", methods=["GET", "POST"])
+@login_required
+def change_password_route():
+    if request.method == "GET":
+        return render_template("change_password.html", title="Passwort ändern")
+
+    current_pw = request.form.get("current_password", "")
+    new_pw = request.form.get("new_password", "")
+    new_pw_confirm = request.form.get("new_password_confirm", "")
+
+    if new_pw != new_pw_confirm:
+        return render_template(
+            "change_password.html",
+            title="Passwort ändern",
+            error="Passwörter stimmen nicht überein."
+        )
+
+    user = get_user_by_id(session["user_id"])
+    if not user or not bcrypt.checkpw(current_pw.encode("utf-8"),
+                                      user["password_hash"].encode("utf-8")):
+        return render_template(
+            "change_password.html",
+            title="Passwort ändern",
+            error="Aktuelles Passwort ist falsch."
+        )
+
+    update_password(user["id"], new_pw)
+    flash("Passwort erfolgreich geändert.", "success")
+    return redirect(url_for("home"))
+
+# =====================================================================
+# ADMIN USER LIST / DELETE
+# =====================================================================
+
+@app.route("/admin/users")
+@admin_required
+def user_list():
+    users = list_users()
+    return render_template(
+        "user_list.html",
+        title="Benutzerverwaltung",
+        users=users,
+    )
+
+
+@app.route("/admin/users/<int:user_id>/delete", methods=["POST"])
+@admin_required
+def delete_user_route(user_id):
+    if session["user_id"] == user_id:
+        flash("Du kannst dein eigenes Benutzerkonto nicht löschen.", "error")
+        return redirect(url_for("user_list"))
+
+    delete_user(user_id)
+    flash("Benutzer gelöscht.", "success")
+    return redirect(url_for("user_list"))
 
 # ---------------------------------------------------
-# Übersicht
+# Übersicht - nur für eingeloggte User
 # ---------------------------------------------------
 @app.route("/")
+@login_required
 def home():
     # Filterwerte aus der URL lesen
     sort = request.args.get("sort", "").strip()
@@ -184,6 +375,7 @@ def home():
 # Neue Leihe Formular (Schritt 1 – ohne Foto!)
 # ---------------------------------------------------
 @app.route("/new-loan")
+@login_required
 def new_loan():
     return render_template(
         "new_loan.html",
@@ -196,6 +388,7 @@ def new_loan():
 # API: Verfügbarkeit einer Box (für Kalender / JS)
 # ---------------------------------------------------
 @app.route("/api/box/<box_code>/availability")
+@login_required
 def api_box_availability(box_code: str):
     # Wenn Nutzer eine Zahl eingegeben hat → BOX-###
     if box_code.isdigit():
@@ -276,6 +469,7 @@ def _create_loan_with_validation(box_id: int, form_data: dict) -> int:
 # Schritt 1 POST: Leihdaten verarbeiten, Box prüfen
 # ---------------------------------------------------
 @app.route("/start-loan", methods=["POST"])
+@login_required
 def start_loan():
     from app.services.boxes import validate_box_code
 
@@ -336,6 +530,7 @@ def start_loan():
 # Nutzer klickt auf JA oder NEIN beim Box-Anlegen
 # ---------------------------------------------------
 @app.route("/confirm-new-box", methods=["POST"])
+@login_required
 def confirm_new_box():
     decision = request.form.get("decision")
     box_code = request.form.get("box_code", "").strip()
@@ -369,6 +564,7 @@ def confirm_new_box():
 # Schritt 2: Foto-Seite (GET + POST)
 # ---------------------------------------------------
 @app.route("/loan/<int:loan_id>/photo", methods=["GET", "POST"])
+@login_required
 def upload_photo(loan_id: int):
     # Leihe holen, damit wir z. B. Box-Code anzeigen können
     loan = get_loan_by_id(loan_id)
@@ -414,6 +610,7 @@ def upload_photo(loan_id: int):
 # Rückgabe
 # ---------------------------------------------------
 @app.route("/return/<int:loan_id>", methods=["GET", "POST"])
+@login_required
 def return_box(loan_id: int):
     loan = get_loan_by_id(loan_id)
 
@@ -435,6 +632,7 @@ def return_box(loan_id: int):
 # Leihe verlängern
 # ---------------------------------------------------
 @app.route("/extend-loan/<int:loan_id>", methods=["POST"])
+@login_required
 def extend_loan_route(loan_id):
     new_date_str = request.form.get("new_date")
     if not new_date_str:
