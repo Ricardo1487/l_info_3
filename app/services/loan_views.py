@@ -108,3 +108,4 @@ def sort_loans(loans: list[dict], sort_field: str, sort_dir: str) -> list[dict]:
         # numerisch / Box-Nummer: normale Sortierung
         return sorted(loans, key=key_func, reverse=reverse)
 
+
