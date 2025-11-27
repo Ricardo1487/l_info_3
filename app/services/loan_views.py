@@ -8,7 +8,7 @@ def compute_loan_stats(loans: list[dict]) -> dict:
     """
     return {
         "total": len(loans),
-        "open": sum(1 for l in loans if l.get("status") in ("OPEN", "OVERDUE")),
+        "open": sum(1 for l in loans if l.get("status") == "OPEN"),
         "returned": sum(1 for l in loans if l.get("status") == "RETURNED"),
         "missing": sum(1 for l in loans if l.get("status") == "MISSING_ITEMS"),
         "overdue": sum(1 for l in loans if l.get("status") == "OVERDUE"),
