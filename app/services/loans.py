@@ -328,45 +328,46 @@ def get_planned_periods_for_box(box_id: int) -> List[Dict[str, date]]:
         ]
 
 
-# ---------------------------------------------------------
-#  Erkannte Objekte für INITIAL / RETURN Fotos zusammenfassen
-# ---------------------------------------------------------
-def get_detected_objects_for_photo(session, loan_id: int, photo_type: str) -> dict:
-    """Lädt alle erkannten Objekte für einen Foto-Typ (INITIAL oder RETURN)
-    und gibt ein Dictionary zurück, z.B.:
-        { "HDMI Kabel": 2, "Adapter": 1 }
-    """
-    rows = session.execute(
-        text("""
-            SELECT d.label, SUM(d.quantity) AS qty
-            FROM photos p
-            JOIN detected_objects d ON d.photo_id = p.id
-            WHERE p.loan_id = :loan_id
-              AND p.type = :ptype
-            GROUP BY d.label
-        """),
-        {"loan_id": loan_id, "ptype": photo_type},
-    ).all()
 
-    return {row.label: row.qty for row in rows}
+def create_loan_with_validation(box_id: int, form_data: dict) -> int:
+    ausgabe_str = form_data.get("ausgabe")
+    rueckgabe_str = form_data.get("rueckgabe")
+    email = form_data.get("email")
 
+    if not ausgabe_str or not rueckgabe_str or not email:
+        raise Exception("Bitte alle Felder ausfüllen.")
 
-# ---------------------------------------------------------
-#  Vergleich zwischen INITIAL & RETURN: Was fehlt?
-# ---------------------------------------------------------
-def compare_object_sets(initial: dict, returned: dict) -> dict:
-    """Vergleicht zwei Objektmengen und liefert die fehlenden Items.
+    ausgabe = date.fromisoformat(ausgabe_str)
+    rueckgabe = date.fromisoformat(rueckgabe_str)
 
-    Beispiel:
-      initial  -> {"HDMI Kabel": 2, "Maus": 1}
-      returned -> {"HDMI Kabel": 1, "Maus": 1}
+    if ausgabe < date.today():
+        raise Exception("Ausgabedatum kann nicht in der Vergangenheit liegen.")
 
-    Ergebnis:
-      {"HDMI Kabel": 1}
-    """
-    missing = {}
-    for label, initial_qty in initial.items():
-        returned_qty = returned.get(label, 0)
-        if returned_qty < initial_qty:
-            missing[label] = initial_qty - returned_qty
-    return missing
+    if rueckgabe < ausgabe:
+        raise Exception("Rückgabedatum darf nicht vor dem Ausgabedatum liegen.")
+
+    with SessionLocal() as session:
+        overlap = session.execute(
+            text("""
+                SELECT 1 FROM loans
+                WHERE box_id = :bid
+                  AND status IN ('OPEN', 'OVERDUE')
+                  AND (
+                        :new_start <= planned_end_date
+                    AND :new_end   >= planned_start_date
+                  )
+                LIMIT 1
+            """),
+            {"bid": box_id, "new_start": ausgabe, "new_end": rueckgabe}
+        ).first()
+
+        if overlap:
+            raise Exception("Diese Box ist im angegebenen Zeitraum bereits ausgeliehen!")
+
+    return create_loan(
+        box_id=box_id,
+        contact_email=email,
+        planned_start_date=ausgabe,
+        planned_end_date=rueckgabe,
+        created_by_user_id=2,
+    )

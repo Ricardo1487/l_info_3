@@ -253,6 +253,44 @@ html[data-theme="themeForest"] .theme-toggle {
   padding: 0.75rem 0.9rem;
   box-shadow: var(--shadow-small);
   border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  position: relative;
+}
+
+.stat-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-small);
+}
+
+
+.stat-card.active-stat {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 45px rgba(0,0,0,0.55);
+}
+
+.stat-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  opacity: 0;
+  transform: scale(0.7);
+  transition: all 0.18s ease;
+}
+
+.stat-card.active-stat .stat-check {
+  opacity: 1;
+  transform: scale(1);
 }
 
 html[data-theme="themeForest"] .stat-card {
@@ -280,8 +318,8 @@ html[data-theme="themeForest"] .stat-card {
 }
 
 .stat-total   { border-left: 3px solid var(--primary); }
-.stat-open    { border-left: 3px solid var(--warning); }
-.stat-returned{ border-left: 3px solid var(--success); }
+.stat-open    { border-left: 3px solid var(--success); }
+.stat-overdue { border-left: 3px solid var(--warning); }
 .stat-missing { border-left: 3px solid var(--danger); }
 
 /* ============================================================
@@ -348,14 +386,14 @@ html[data-theme="themeForest"] .loan-card {
   background: rgba(251, 191, 36, 0.95);
 }
 
-.status-returned {
-  color: #022c22;
-  background: rgba(45, 212, 191, 0.96);
-}
-
 .status-missing_items {
   color: #3f0c0c;
   background: rgba(248, 113, 113, 0.98);
+}
+
+.status-overdue {
+  color: #7c2d12;
+  background: rgba(251, 146, 60, 0.98); /* schönes Orange */
 }
 
 .loan-card-body {
@@ -705,4 +743,145 @@ html[data-theme="themeForest"] .filter-button-reset {
 
 html[data-theme="themeForest"] .filter-button-reset:hover {
   background: rgba(148, 163, 184, 0.16);
+}
+
+
+/* ============================================================
+   FILTER & SORT BAR
+   ============================================================ */
+
+.filter-card {
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.25rem;
+    border-radius: 18px;
+    background: rgba(13, 22, 46, 0.9);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* Desktop: alles in einer Reihe */
+@media (min-width: 768px) {
+    .filter-card {
+        flex-direction: row;
+        align-items: flex-end;
+        justify-content: space-between;
+    }
+}
+
+.filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1rem;
+    width: 100%;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    min-width: 180px;
+}
+
+.filter-group-grow {
+    flex: 1 1 220px;
+}
+
+.filter-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.7;
+    margin-bottom: 0.25rem;
+}
+
+.filter-select,
+.filter-input {
+    padding: 0.5rem 0.75rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(10, 16, 32, 0.9);
+    color: inherit;
+    font: inherit;
+    outline: none;
+}
+
+.filter-select:focus,
+.filter-input:focus {
+    border-color: #ffd66b;
+    box-shadow: 0 0 0 1px rgba(255, 214, 107, 0.3);
+}
+
+.filter-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: flex-end;
+}
+
+.filter-button-primary,
+.filter-button-reset {
+    padding: 0.55rem 1rem;
+    border-radius: 999px;
+    border: none;
+    font-size: 0.9rem;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.filter-button-primary {
+    background: linear-gradient(135deg, #ffd66b, #ff8c6b);
+    color: #101320;
+    font-weight: 600;
+}
+
+.filter-button-primary:hover {
+    filter: brightness(1.05);
+}
+
+.filter-button-reset {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: inherit;
+    font-weight: 500;
+}
+
+.filter-button-reset:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Sortierfeld + Pfeilbutton */
+
+.sort-group-inner {
+    display: flex;
+    gap: 0.5rem;
+    align-items: stretch;
+}
+
+.sort-group-inner .filter-select {
+    flex: 1 1 auto;
+}
+
+.sort-dir-toggle {
+    padding: 0.5rem 0.75rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(10, 16, 32, 0.9);
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.5rem;
+}
+
+.sort-dir-toggle:hover {
+    border-color: #ffd66b;
+    box-shadow: 0 0 0 1px rgba(255, 214, 107, 0.3);
 }
