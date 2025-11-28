@@ -10,61 +10,91 @@
   {% if loans %}
     {# Kleine Stat-Kacheln oben #}
     <section class="stats-grid">
-        {% set open_count = loans|selectattr('status','equalto','OPEN')|list|length %}
-        {% set returned_count = loans|selectattr('status','equalto','RETURNED')|list|length %}
-        {% set missing_count = loans|selectattr('status','equalto','MISSING_ITEMS')|list|length %}
-        {% set total_count = loans|length %}
-
-        <article class="stat-card stat-total">
+        <a href="{{ url_for('home', status='') }}" class="stat-card stat-total {{ 'active-stat' if not current_status else '' }}">
             <span class="stat-label">Gesamt</span>
             <span class="stat-value">{{ total_count }}</span>
             <span class="stat-desc">Leihen im System</span>
-        </article>
+            {% if not current_status %}
+                <span class="stat-check">✔</span>
+            {% endif %}
+        </a>
 
-        <article class="stat-card stat-open">
+        <a href="{{ url_for('home', status='OPEN') }}" class="stat-card stat-open {{ 'active-stat' if current_status == 'OPEN' else '' }}">
             <span class="stat-label">Offen</span>
             <span class="stat-value">{{ open_count }}</span>
             <span class="stat-desc">Aktiv laufende Leihen</span>
-        </article>
+            {% if current_status == 'OPEN' %}
+                <span class="stat-check">✔</span>
+            {% endif %}
+        </a>
 
-        <article class="stat-card stat-returned">
-            <span class="stat-label">Zurück</span>
-            <span class="stat-value">{{ returned_count }}</span>
-            <span class="stat-desc">Abgeschlossene Leihen</span>
-        </article>
+        <a href="{{ url_for('home', status='OVERDUE') }}" class="stat-card stat-overdue {{ 'active-stat' if current_status == 'OVERDUE' else '' }}">
+            <span class="stat-label">Überfällig</span>
+            <span class="stat-value">{{ overdue_count }}</span>
+            <span class="stat-desc">Überfällige Leihen</span>
+            {% if current_status == 'OVERDUE' %}
+                <span class="stat-check">✔</span>
+            {% endif %}
+        </a>
 
-        <article class="stat-card stat-missing">
+        <a href="{{ url_for('home', status='MISSING_ITEMS') }}" class="stat-card stat-missing {{ 'active-stat' if current_status == 'MISSING_ITEMS' else '' }}">
             <span class="stat-label">Fehlende Teile</span>
             <span class="stat-value">{{ missing_count }}</span>
             <span class="stat-desc">MISSING_ITEMS</span>
-        </article>
+            {% if current_status == 'MISSING_ITEMS' %}
+                <span class="stat-check">✔</span>
+            {% endif %}
+        </a>
     </section>
 
     {# === Filterleiste unter den Stat-Karten === #}
     <form class="filter-card" method="get">
+        {# aktuellen Status (Gesamt / OPEN / RETURNED / MISSING_ITEMS / OVERDUE) beibehalten #}
+        <input type="hidden" name="status" value="{{ current_status or '' }}">
+
         <div class="filter-row">
-            {# Sortierung nach Datum #}
+            {# Sortierung nach Feld + Richtungspfeil #}
             <div class="filter-group">
-                <label for="sort" class="filter-label">Sortieren nach</label>
-                <select id="sort" name="sort" class="filter-select">
-                    <option value="">Keine Sortierung</option>
-                    <option value="issue_date_asc"
-                        {{ 'selected' if current_sort == 'issue_date_asc' else '' }}>
-                        Ausgabedatum ↑
-                    </option>
-                    <option value="issue_date_desc"
-                        {{ 'selected' if current_sort == 'issue_date_desc' else '' }}>
-                        Ausgabedatum ↓
-                    </option>
-                    <option value="return_date_asc"
-                        {{ 'selected' if current_sort == 'return_date_asc' else '' }}>
-                        Rückgabedatum ↑
-                    </option>
-                    <option value="return_date_desc"
-                        {{ 'selected' if current_sort == 'return_date_desc' else '' }}>
-                        Rückgabedatum ↓
-                    </option>
-                </select>
+                <label class="filter-label">Sortieren nach</label>
+                <div class="sort-group-inner">
+                    <select id="sort_field" name="sort_field" class="filter-select">
+                        <option value="issue_date"
+                            {{ 'selected' if current_sort_field == 'issue_date' else '' }}>
+                            Ausgabedatum
+                        </option>
+
+                        <option value="return_date"
+                            {{ 'selected' if current_sort_field == 'return_date' else '' }}>
+                            Rückgabedatum
+                        </option>
+
+                        <option value="loan_id"
+                            {{ 'selected' if current_sort_field == 'loan_id' else '' }}>
+                            Leih-ID (Erstelldatum)
+                        </option>
+
+                        <option value="box_number"
+                            {{ 'selected' if current_sort_field == 'box_number' else '' }}>
+                            Box-Nummer
+                        </option>
+                    </select>
+
+                    {# verstecktes Feld für Richtung #}
+                    <input type="hidden"
+                           id="sort_dir"
+                           name="sort_dir"
+                           value="{{ current_sort_dir or 'asc' }}">
+
+                    {# Button mit Pfeil, der nur die Richtung umschaltet #}
+                    <button type="button"
+                            class="sort-dir-toggle"
+                            id="sort-dir-toggle"
+                            aria-label="Sortierreihenfolge wechseln">
+                        <span id="sort-dir-arrow">
+                            {{ '▲' if (current_sort_dir or 'asc') == 'asc' else '▼' }}
+                        </span>
+                    </button>
+                </div>
             </div>
 
             {# Suche nach Kontakt-E-Mail #}
@@ -97,9 +127,9 @@
     <section class="card-list">
       {% for loan in loans %}
         <article class="loan-card">
+
           <header class="loan-card-header">
               <div class="loan-box">
-                  <div class="loan-box-label">Box</div>
                   <div class="loan-box-code">{{ loan.box_code }}</div>
               </div>
 
@@ -116,12 +146,12 @@
 
               <div class="loan-row">
                   <span class="loan-label">Ausgabe (geplant)</span>
-                  <span class="loan-value">{{ loan.planned_start_date }}</span>
+                  <span class="loan-value">{{ loan.planned_start_date_formatted }}</span>
               </div>
 
               <div class="loan-row">
                   <span class="loan-label">Rückgabe (geplant)</span>
-                  <span class="loan-value">{{ loan.planned_end_date }}</span>
+                  <span class="loan-value">{{ loan.planned_end_date_formatted }}</span>
               </div>
 
               <div class="loan-row">
@@ -135,6 +165,7 @@
                   Rückgabe starten
               </a>
           </footer>
+
         </article>
       {% endfor %}
     </section>
@@ -142,5 +173,25 @@
   {% else %}
     <p>Aktuell sind keine Leihen vorhanden.</p>
   {% endif %}
+
+  <script>
+  document.addEventListener('DOMContentLoaded', function () {
+      const dirInput = document.getElementById('sort_dir');
+      const btn = document.getElementById('sort-dir-toggle');
+      const arrow = document.getElementById('sort-dir-arrow');
+
+      if (!dirInput || !btn || !arrow) return;
+
+      btn.addEventListener('click', function () {
+          if (dirInput.value === 'asc') {
+              dirInput.value = 'desc';
+              arrow.textContent = '▼';
+          } else {
+              dirInput.value = 'asc';
+              arrow.textContent = '▲';
+          }
+      });
+  });
+  </script>
 
 {% endblock %}

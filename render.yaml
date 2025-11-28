@@ -1,10 +1,8 @@
 services:
   - type: web
-    name: info3-labor
-    runtime: python
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "gunicorn app.web:app"
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.12.3
-#bitti funktionier endlich
+    name: l-info-3
+    env: python
+    plan: starter
+    pythonVersion: 3.12.3
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app.web:app
