@@ -20,6 +20,13 @@ from app.services.loans import (
     return_loan,
     extend_loan,
     get_planned_periods_for_box,
+    create_loan_with_validation,  # falls du sie hier nutzt
+)
+
+from app.services.loan_views import (  # NEU
+    compute_loan_stats,
+    filter_loans,
+    sort_loans,
 )
 
 # boxes importieren
@@ -227,150 +234,56 @@ def delete_user_route(user_id):
 @app.route("/")
 @login_required
 def home():
-    # Filterwerte aus der URL lesen
-    sort = request.args.get("sort", "").strip()
+    # 1) Parameter
+    sort_field = request.args.get("sort_field", "return_date").strip()
+    sort_dir = request.args.get("sort_dir", "asc").strip().lower()
+    if sort_dir not in ("asc", "desc"):
+        sort_dir = "asc"
+
     contact = request.args.get("contact", "").strip()
     status_filter = request.args.get("status", "").strip()
 
-    # Alle Loans laden (für Statistik & Liste)
+    # 2) Alle Leihen laden
     all_loans = list_loans()
 
-    # -------- Statistik über ALLE Leihen (unabhängig vom Filter) --------
-    total_loans = len(all_loans)
-    open_loans = sum(
-        1 for l in all_loans
-        if l.get("status") in ("OPEN", "OVERDUE")
-    )
-    overdue_loans = sum(
-        1 for l in all_loans
-        if l.get("status") == "OVERDUE"
-    )
-    missing_loans = sum(
-        1 for l in all_loans
-        if l.get("status") == "MISSING_ITEMS"
-    )
+    # 3) Statistiken berechnen (für die Kacheln)
+    stats = compute_loan_stats(all_loans)
 
-    # Arbeitskopie für die gefilterte/ sortierte Liste
-    loans = list(all_loans)
+    # 4) Filter anwenden
+    loans = filter_loans(all_loans, contact=contact, status=status_filter)
 
-    # -------- Filter nach Kontakt (E-Mail) --------
-    if contact:
-        search = contact.lower()
-        loans = [
-            l for l in loans
-            if search in l.get("contact_email", "").lower()
-        ]
+    # 5) Sortierung anwenden
+    loans = sort_loans(loans, sort_field=sort_field, sort_dir=sort_dir)
 
-    # -------- Filter nach Status (von den Karten oben) --------
-    if status_filter:
-        loans = [l for l in loans if l.get("status") == status_filter]
+    # 5b) Datum formatiert hinzufügen (TT.MM.JJJJ)
+    for l in loans:
+        if isinstance(l.get("planned_start_date"), date):
+            l["planned_start_date_formatted"] = l["planned_start_date"].strftime("%d.%m.%Y")
+        else:
+            l["planned_start_date_formatted"] = l.get("planned_start_date")
 
-    # -------- Sortierfunktionen --------
-    def get_issue_date(loan):
-        return loan.get("planned_start_date")
+        if isinstance(l.get("planned_end_date"), date):
+            l["planned_end_date_formatted"] = l["planned_end_date"].strftime("%d.%m.%Y")
+        else:
+            l["planned_end_date_formatted"] = l.get("planned_end_date")
 
-    def get_return_date(loan):
-        return loan.get("planned_end_date")
-
-    if sort == "issue_date_asc":
-        loans = sorted(loans, key=lambda l: get_issue_date(l) or date.max)
-    elif sort == "issue_date_desc":
-        loans = sorted(loans, key=lambda l: get_issue_date(l) or date.min, reverse=True)
-    elif sort == "return_date_asc":
-        loans = sorted(loans, key=lambda l: get_return_date(l) or date.max)
-    elif sort == "return_date_desc":
-        loans = sorted(loans, key=lambda l: get_return_date(l) or date.min, reverse=True)
-
-    # -------- Template rendern --------
-    return render_template(
-        "index.html",
-        title="Übersicht",
-        loans=loans,                 # gefilterte + sortierte Liste
-        current_sort=sort,
-        current_contact=contact,
-        current_status=status_filter,
-        total_count=total_loans,     # GESAMT
-        open_count=open_loans,       # OFFEN
-        overdue_count=overdue_loans,    #UEBERFÄLLIG
-        missing_count=missing_loans,    # FEHLENDE TEILE
-    )
-    # -- Sortierfunktionen --
-    def get_issue_date(loan):
-        return loan.get("planned_start_date")
-
-    def get_return_date(loan):
-        return loan.get("planned_end_date")
-
-    # -- Sortierung anwenden --
-    if sort == "issue_date_asc":
-        loans_raw = sorted(loans_raw, key=lambda l: get_issue_date(l) or date.max)
-    elif sort == "issue_date_desc":
-        loans_raw = sorted(loans_raw, key=lambda l: get_issue_date(l) or date.min, reverse=True)
-    elif sort == "return_date_asc":
-        loans_raw = sorted(loans_raw, key=lambda l: get_return_date(l) or date.max)
-    elif sort == "return_date_desc":
-        loans_raw = sorted(loans_raw, key=lambda l: get_return_date(l) or date.min, reverse=True)
-
-    return render_template(
-        "index.html",
-        title="Übersicht",
-        loans=loans_raw,
-        current_sort=sort,
-        current_contact=contact,
-        current_status=status_filter,
-        open_count=open_loans,
-        returned_count=returned_loans,
-        missing_count=missing_loans,
-    )
-    # -------------------------------
-    # 2) Sortierfunktionen definieren
-    # -------------------------------
-    def get_issue_date(loan):
-        # Ausgabedatum (geplant)
-        return getattr(loan, "planned_start_date", None)
-
-    def get_return_date(loan):
-        # Rückgabedatum (geplant)
-        return getattr(loan, "planned_end_date", None)
-
-    # -------------------------------
-    # 3) Sortierung anwenden
-    # -------------------------------
-    if sort == "issue_date_asc":
-        loans = sorted(
-            loans,
-            key=lambda l: get_issue_date(l) or date.max
-        )
-    elif sort == "issue_date_desc":
-        loans = sorted(
-            loans,
-            key=lambda l: get_issue_date(l) or date.min,
-            reverse=True,
-        )
-    elif sort == "return_date_asc":
-        loans = sorted(
-            loans,
-            key=lambda l: get_return_date(l) or date.max
-        )
-    elif sort == "return_date_desc":
-        loans = sorted(
-            loans,
-            key=lambda l: get_return_date(l) or date.min,
-            reverse=True,
-        )
-
-    # -------------------------------
-    # 4) Template rendern
-    # -------------------------------
+    # 6) Template rendern
     return render_template(
         "index.html",
         title="Übersicht",
         loans=loans,
-        current_sort=sort,
+        current_sort_field=sort_field,
+        current_sort_dir=sort_dir,
+        current_sort=f"{sort_field}_{sort_dir}",
         current_contact=contact,
+        current_status=status_filter,
+        # Statistik-Kacheln
+        total_count=stats["total"],
+        open_count=stats["open"],
+        returned_count=stats["returned"],
+        missing_count=stats["missing"],
+        overdue_count=stats["overdue"],
     )
-
-
 # ---------------------------------------------------
 # Neue Leihe Formular (Schritt 1 – ohne Foto!)
 # ---------------------------------------------------
@@ -411,57 +324,6 @@ def api_box_availability(box_code: str):
         ]
     })
 
-
-
-# ---------------------------------------------------
-# Hilfsfunktion: Leihe mit Validierung anlegen
-# ---------------------------------------------------
-def _create_loan_with_validation(box_id: int, form_data: dict) -> int:
-    """Validiert Datumslogik + Überschneidungen und legt eine Leihe an."""
-
-    ausgabe_str = form_data.get("ausgabe")
-    rueckgabe_str = form_data.get("rueckgabe")
-    email = form_data.get("email")
-
-    if not ausgabe_str or not rueckgabe_str or not email:
-        raise Exception("Bitte alle Felder ausfüllen.")
-
-    ausgabe = date.fromisoformat(ausgabe_str)
-    rueckgabe = date.fromisoformat(rueckgabe_str)
-
-    if ausgabe < date.today():
-        raise Exception("Ausgabedatum kann nicht in der Vergangenheit liegen.")
-
-    if rueckgabe < ausgabe:
-        raise Exception("Rückgabedatum darf nicht vor dem Ausgabedatum liegen.")
-
-    # Überlappung prüfen
-    with SessionLocal() as session:
-        overlap = session.execute(
-            text("""
-                SELECT 1 FROM loans
-                WHERE box_id = :bid
-                  AND status IN ('OPEN', 'OVERDUE')
-                  AND (
-                        :new_start <= planned_end_date
-                    AND :new_end   >= planned_start_date
-                  )
-                LIMIT 1
-            """),
-            {"bid": box_id, "new_start": ausgabe, "new_end": rueckgabe}
-        ).first()
-
-        if overlap:
-            raise Exception("Diese Box ist im angegebenen Zeitraum bereits ausgeliehen!")
-
-    # OK → Leihe anlegen
-    return create_loan(
-        box_id=box_id,
-        contact_email=email,
-        planned_start_date=ausgabe,
-        planned_end_date=rueckgabe,
-        created_by_user_id=2,
-    )
 
 
 
@@ -514,7 +376,7 @@ def start_loan():
 
     # === LEIHE ANLEGEN (mit Fehlerbehandlung) ===
     try:
-        loan_id = _create_loan_with_validation(existing_box_id, form_data)
+        loan_id = create_loan_with_validation(existing_box_id, form_data)
     except Exception as e:
         return render_template(
             "new_loan.html",
@@ -552,9 +414,8 @@ def confirm_new_box():
         )
 
     if decision == "yes":
-        # Neue Box anlegen, dann Leihe anlegen
         new_box_id = create_box(box_code)
-        loan_id = _create_loan_with_validation(new_box_id, form_data)
+        loan_id = create_loan_with_validation(new_box_id, form_data)
         return redirect(url_for("upload_photo", loan_id=loan_id))
 
     abort(400, "Ungültige Auswahl.")

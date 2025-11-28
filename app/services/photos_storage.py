@@ -55,3 +55,5 @@ def upload_initial_photo_for_loan(loan_id: int, file_storage) -> str:
     # aber wir brauchen ihn nach dem Upload auch nicht mehr.
 
     return bucket_key
+
+#seeeyyyuuhh
