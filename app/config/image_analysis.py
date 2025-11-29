@@ -3,6 +3,7 @@ import json
 import os
 from openai import OpenAI
 
+
 def _get_client():
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
@@ -11,6 +12,7 @@ def _get_client():
         api_key=api_key,
         base_url="https://xinference.ostfalialabs.org/v1"
     )
+
 
 def analyze_image_file(file_storage):
     """
@@ -56,12 +58,42 @@ def analyze_image_file(file_storage):
         temperature=0.2,
     )
 
-    raw = response.choices[0].message.content[0].text.strip()
+    # Inhalt robust auslesen – je nach API-Version kann content ein String oder eine Liste sein
+    msg_content = response.choices[0].message.content
 
+    if isinstance(msg_content, str):
+        raw = msg_content.strip()
+    elif isinstance(msg_content, list):
+        # z. B. [{"type": "text", "text": "..."}]
+        texts = []
+        for part in msg_content:
+            # OpenAI-Client: part kann ein Objekt mit .text oder ein dict mit "text" sein
+            t = getattr(part, "text", None)
+            if t:
+                texts.append(t)
+            elif isinstance(part, dict) and "text" in part:
+                texts.append(part["text"])
+        raw = "\n".join(texts).strip()
+    else:
+        raw = str(msg_content).strip()
+
+    # Falls das Modell ```json ... ``` zurückgibt → abschälen
     if raw.startswith("```"):
         raw = raw.strip("`")
         parts = raw.split("\n", 1)
         if len(parts) == 2 and parts[0].lower().startswith("json"):
-            raw = parts[1]
+            raw = parts[1].strip()
 
-    return json.loads(raw)
+    print("RAW ANALYSIS STRING:", raw)
+
+    data = json.loads(raw)
+
+    # Sicherheit: Immer ein Dict mit 'objects' liefern
+    if not isinstance(data, dict):
+        raise ValueError(f"Analyse-Resultat ist kein Objekt: {data}")
+
+    if "objects" not in data:
+        # Falls das Modell eine Liste oder etwas anderes zurückgibt, wrappe es
+        data = {"objects": data}
+
+    return data

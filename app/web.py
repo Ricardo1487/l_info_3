@@ -6,6 +6,7 @@ from flask import Flask, render_template, request, redirect, url_for, abort, jso
 
 from sqlalchemy import text
 from app.config.database import SessionLocal
+from app.config.image_analysis import analyze_image_file
 
 # loans importieren
 from app.services.loans import (
@@ -16,6 +17,8 @@ from app.services.loans import (
     extend_loan,
     get_planned_periods_for_box,
     create_loan_with_validation,  # falls du sie hier nutzt
+    get_detected_objects_for_photo,
+    compare_object_sets,
 )
 
 from app.services.loan_views import (  # NEU
@@ -75,6 +78,15 @@ def home():
             l["planned_end_date_formatted"] = l["planned_end_date"].strftime("%d.%m.%Y")
         else:
             l["planned_end_date_formatted"] = l.get("planned_end_date")
+
+    # 5c) Erkannte Inhalte aus dem INITIAL-Foto an jede Leihe hängen
+    with SessionLocal() as session:
+        for l in loans:
+            try:
+                contents = get_detected_objects_for_photo(session, l["id"], "INITIAL")
+            except Exception:
+                contents = {}
+            l["initial_contents"] = contents
 
     # 6) Template rendern
     return render_template(
@@ -241,15 +253,27 @@ def upload_photo(loan_id: int):
         if not photo:
             abort(400, "Foto fehlt.")
 
+        # 0) Bild mit KI analysieren (Inhalt erkennen)
+        try:
+            analysis = analyze_image_file(photo)
+            print("ANALYSIS RESULT:", analysis)
+            detected_objects = analysis.get("objects", [])
+            print("DETECTED OBJECTS:", detected_objects)
+        except Exception as e:
+            # Wenn Analyse fehlschlägt, Leihe trotzdem speichern
+            print("Fehler bei der Bildanalyse:", e)
+            detected_objects = []
+
         # 1) Foto nach Supabase hochladen (direkt unter loans/<id>/...)
         bucket_key = upload_initial_photo_for_loan(loan_id, photo)
 
-        # 2) Foto-Eintrag in der DB (photos-Tabelle)
+        # 2) Foto-Eintrag + erkannte Objekte in der DB speichern
         with SessionLocal() as session:
-            session.execute(
+            result = session.execute(
                 text("""
                     INSERT INTO photos (loan_id, type, file_path, created_by_user_id)
                     VALUES (:loan_id, 'INITIAL', :file_path, :user_id)
+                    RETURNING id
                 """),
                 {
                     "loan_id": loan_id,
@@ -257,11 +281,25 @@ def upload_photo(loan_id: int):
                     "user_id": 2,  # TODO: aus Login übernehmen
                 }
             )
+            photo_id = result.scalar_one()
+
+            for obj in detected_objects:
+                session.execute(
+                    text("""
+                        INSERT INTO detected_objects (photo_id, label, confidence, quantity, is_manually_edited)
+                        VALUES (:photo_id, :label, :confidence, :quantity, false)
+                    """),
+                    {
+                        "photo_id": photo_id,
+                        "label": obj.get("label"),
+                        "confidence": obj.get("confidence"),
+                        "quantity": obj.get("quantity", 1),
+                    }
+                )
+
             session.commit()
 
-        # TODO: hier später KI mit demselben Bild-Upload antriggern
-
-        return redirect(url_for("home"))
+        return redirect(url_for("review_initial_contents", loan_id=loan_id))
 
     # GET → Template anzeigen
     return render_template(
@@ -307,6 +345,137 @@ def extend_loan_route(loan_id):
 
     return redirect(url_for("home"))
 
+
+# ---------------------------------------------------
+# Foto & erkannte Inhalte nach Upload prüfen/bearbeiten
+# ---------------------------------------------------
+@app.route("/loan/<int:loan_id>/review-initial", methods=["GET", "POST"])
+def review_initial_contents(loan_id: int):
+    loan = get_loan_by_id(loan_id)
+    if loan is None:
+        abort(404, "Leihe nicht gefunden.")
+
+    with SessionLocal() as session:
+        # letztes INITIAL-Foto zur Leihe holen
+        photo_row = session.execute(
+            text(
+                """
+                SELECT id, file_path
+                FROM photos
+                WHERE loan_id = :loan_id
+                  AND type = 'INITIAL'
+                ORDER BY id DESC
+                LIMIT 1
+                """
+            ),
+            {"loan_id": loan_id},
+        ).mappings().first()
+
+        if photo_row is None:
+            abort(404, "Kein Initial-Foto für diese Leihe gefunden.")
+
+        photo_id = photo_row["id"]
+        file_path = photo_row["file_path"]
+
+        if request.method == "POST":
+            # vorhandene Objekte laden, um sie zu aktualisieren oder zu löschen
+            obj_rows = session.execute(
+                text(
+                    """
+                    SELECT id
+                    FROM detected_objects
+                    WHERE photo_id = :photo_id
+                    """
+                ),
+                {"photo_id": photo_id},
+            ).mappings().all()
+
+            for row in obj_rows:
+                obj_id = row["id"]
+                label = request.form.get(f"label_{obj_id}")
+                quantity_raw = request.form.get(f"quantity_{obj_id}")
+                delete_flag = request.form.get(f"delete_{obj_id}") == "on"
+
+                if delete_flag:
+                    session.execute(
+                        text(
+                            """
+                            DELETE FROM detected_objects
+                            WHERE id = :id
+                            """
+                        ),
+                        {"id": obj_id},
+                    )
+                else:
+                    try:
+                        quantity = int(quantity_raw) if quantity_raw else 1
+                    except ValueError:
+                        quantity = 1
+
+                    session.execute(
+                        text(
+                            """
+                            UPDATE detected_objects
+                            SET label = :label,
+                                quantity = :quantity,
+                                is_manually_edited = true
+                            WHERE id = :id
+                            """
+                        ),
+                        {
+                            "label": label,
+                            "quantity": quantity,
+                            "id": obj_id,
+                        },
+                    )
+
+            session.commit()
+            return redirect(url_for("home"))
+
+        # GET: erkannte Objekte zum Anzeigen laden
+        objects = session.execute(
+            text(
+                """
+                SELECT id, label, quantity, confidence, is_manually_edited
+                FROM detected_objects
+                WHERE photo_id = :photo_id
+                ORDER BY id
+                """
+            ),
+            {"photo_id": photo_id},
+        ).mappings().all()
+
+    return render_template(
+        "review_initial_contents.html",
+        title="Foto & Inhalt prüfen",
+        loan=loan,
+        photo_path=file_path,
+        objects=objects,
+    )
+
+# ---------------------------------------------------
+# Inhalt einer Leihe prüfen (INITIAL vs RETURN)
+# ---------------------------------------------------
+@app.route("/loan/<int:loan_id>/check-contents")
+def check_loan_contents(loan_id: int):
+    loan = get_loan_by_id(loan_id)
+    if loan is None:
+        abort(404, "Leihe nicht gefunden.")
+
+    # INITIAL- und RETURN-Objekte laden und vergleichen
+    with SessionLocal() as session:
+        initial_objects = get_detected_objects_for_photo(session, loan_id, "INITIAL")
+        returned_objects = get_detected_objects_for_photo(session, loan_id, "RETURN")
+        missing_objects = compare_object_sets(initial_objects, returned_objects)
+
+    return render_template(
+        "check_contents.html",
+        title="Inhalt prüfen",
+        loan=loan,
+        initial_objects=initial_objects,
+        returned_objects=returned_objects,
+        missing_objects=missing_objects,
+    )
 
 if __name__ == "__main__":
     app.run(debug=True)

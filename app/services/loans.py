@@ -371,3 +371,51 @@ def create_loan_with_validation(box_id: int, form_data: dict) -> int:
         planned_end_date=rueckgabe,
         created_by_user_id=2,
     )
+
+
+# ---------------------------------------------------------
+#  Erkannte Objekte für INITIAL / RETURN-Fotos zusammenfassen
+# ---------------------------------------------------------
+def get_detected_objects_for_photo(session, loan_id: int, photo_type: str) -> Dict[str, int]:
+    """Lädt alle erkannten Objekte für einen Foto-Typ (INITIAL oder RETURN)
+    einer bestimmten Leihe und gibt ein Dictionary der Form zurück:
+
+        { "HDMI Kabel": 2, "Adapter": 1 }
+    """
+    rows = session.execute(
+        text(
+            """
+            SELECT d.label, SUM(d.quantity) AS qty
+            FROM photos p
+            JOIN detected_objects d ON d.photo_id = p.id
+            WHERE p.loan_id = :loan_id
+              AND p.type = :ptype
+            GROUP BY d.label
+            """
+        ),
+        {"loan_id": loan_id, "ptype": photo_type},
+    ).mappings().all()
+
+    return {row["label"]: row["qty"] for row in rows}
+
+
+# ---------------------------------------------------------
+#  Vergleich zwischen INITIAL & RETURN: Was fehlt?
+# ---------------------------------------------------------
+
+def compare_object_sets(initial: Dict[str, int], returned: Dict[str, int]) -> Dict[str, int]:
+    """Vergleicht zwei Objektmengen und liefert die fehlenden Items.
+
+    Beispiel:
+      initial  -> {"HDMI Kabel": 2, "Maus": 1}
+      returned -> {"HDMI Kabel": 1, "Maus": 1}
+
+    Ergebnis:
+      {"HDMI Kabel": 1}
+    """
+    missing: Dict[str, int] = {}
+    for label, initial_qty in initial.items():
+        returned_qty = returned.get(label, 0)
+        if returned_qty < initial_qty:
+            missing[label] = initial_qty - returned_qty
+    return missing
