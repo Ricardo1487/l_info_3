@@ -382,18 +382,18 @@ html[data-theme="themeForest"] .loan-card {
 /* Status Colors */
 
 .status-open {
-  color: #1f2933;
-  background: rgba(251, 191, 36, 0.95);
+  color: #000000;
+  background: rgba(58, 199, 161, 0.98);
 }
 
 .status-missing_items {
-  color: #3f0c0c;
-  background: rgba(248, 113, 113, 0.98);
+  color: #000000;
+  background: rgba(249, 115, 115, 0.98);
 }
 
 .status-overdue {
-  color: #7c2d12;
-  background: rgba(251, 146, 60, 0.98); /* schönes Orange */
+  color:#000000;
+  background: rgba(251, 191, 60, 0.98);
 }
 
 .loan-card-body {
@@ -539,6 +539,17 @@ button:hover {
   color: #ffe3e3;
   font-weight: 600;
 }
+
+.alert-error {
+  background: rgba(248, 113, 113, 0.15);
+  border: 1px solid #f87171;
+  color: #fecaca;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
 
 html[data-theme="themeForest"] .error-box {
   background: rgba(255, 209, 209, 0.9);
@@ -755,7 +766,7 @@ html[data-theme="themeForest"] .filter-button-reset:hover {
     margin-bottom: 1.5rem;
     padding: 1rem 1.25rem;
     border-radius: 18px;
-    background: rgba(13, 22, 46, 0.9);
+    background: radial-gradient(circle at top left, var(--surface-soft), var(--surface));;
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
     border: 1px solid rgba(255, 255, 255, 0.05);
     display: flex;
@@ -799,14 +810,21 @@ html[data-theme="themeForest"] .filter-button-reset:hover {
 
 .filter-select,
 .filter-input {
-    padding: 0.5rem 0.75rem;
-    border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(10, 16, 32, 0.9);
-    color: inherit;
+    padding: 0.55rem 0.8rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+
+    /* FIX: Blau entfernen */
+    background: var(--surface);     /* NICHT mehr var(--bg-soft) */
+    appearance: none !important;    /* Browser-Design deaktivieren */
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+
+    color: var(--text);
     font: inherit;
     outline: none;
 }
+
 
 .filter-select:focus,
 .filter-input:focus {
@@ -870,16 +888,24 @@ html[data-theme="themeForest"] .filter-button-reset:hover {
 .sort-dir-toggle {
     padding: 0.5rem 0.75rem;
     border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(10, 16, 32, 0.9);
-    color: inherit;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+
+    /* FIX → gleiche Farbe wie Inputs */
+    background: var(--surface);
+
+    color: var(--text);
     font: inherit;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     min-width: 2.5rem;
+
+    /* optional smoother look */
+    box-shadow: var(--shadow-small);
+    transition: background 0.15s ease, border-color 0.15s ease;
 }
+
 
 .sort-dir-toggle:hover {
     border-color: #ffd66b;

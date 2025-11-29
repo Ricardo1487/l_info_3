@@ -24,9 +24,24 @@
     </div>
 
     <div class="nav-right">
-        <nav class="nav-links">
+    <nav class="nav-links">
+        {% if session.get("user_id") %}
             <a href="{{ url_for('home') }}" class="nav-link">Übersicht</a>
             <a href="{{ url_for('new_loan') }}" class="nav-link nav-link-primary">Neue Leihe</a>
+            <a href="{{ url_for('change_password_route') }}" class="nav-link">Passwort ändern</a>
+
+            {% if session.get("user_role") == "ADMIN" %}
+                <a href="{{ url_for('user_list') }}" class="nav-link">Benutzer</a>
+                <a href="{{ url_for('register') }}" class="nav-link">Benutzer anlegen</a>
+            {% endif %}
+
+            <span class="nav-link">
+                {{ session.get("user_name") }} ({{ session.get("user_role") }})
+            </span>
+            <a href="{{ url_for('logout') }}" class="nav-link nav-link-primary">Logout</a>
+        {% else %}
+            <a href="{{ url_for('login') }}" class="nav-link nav-link-primary">Login</a>
+        {% endif %}
         </nav>
 
         <!-- Theme Toggle: Mountain ⇄ Forest -->

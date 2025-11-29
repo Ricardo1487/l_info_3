@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-header">
+    <h1 class="page-title">Benutzerverwaltung</h1>
+</section>
+
+<section class="card">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>E-Mail</th>
+                <th>Rolle</th>
+                <th>Aktionen</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for u in users %}
+            <tr>
+                <td>{{ u.username }}</td>
+                <td>{{ u.email }}</td>
+                <td>{{ u.role }}</td>
+                <td>
+                    <form method="POST" action="{{ url_for('delete_user_route', user_id=u.id) }}"
+                          onsubmit="return confirm('Benutzer wirklich löschen?');">
+                        <button class="btn-danger" type="submit">Löschen</button>
+                    </form>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <a href="{{ url_for('register') }}" class="btn-primary" style="margin-top: 1rem;">
+        Neuen Benutzer anlegen
+    </a>
+</section>
+{% endblock %}

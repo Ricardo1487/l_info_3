@@ -32,6 +32,26 @@ def list_loans() -> List[Dict[str, Any]]:
 
         return [dict(r) for r in rows]
 
+def get_loan_by_id(loan_id: int) -> Optional[Dict[str, Any]]:
+    """
+    Holt Details einer einzelnen Leihe.
+    """
+    with SessionLocal() as session:
+        row = session.execute(
+            text("""
+                SELECT
+                    l.*,
+                    b.box_code
+                FROM loans l
+                JOIN boxes b ON l.box_id = b.id
+                WHERE l.id = :loan_id
+            """),
+            {"loan_id": loan_id}
+        ).mappings().first()
+
+        return dict(row) if row else None
+
+
 
 # ---------------------------------------------------------
 #  Neue Leihe anlegen
@@ -85,28 +105,53 @@ def create_loan(
         session.commit()
         return loan_id
 
+def create_loan_with_validation(box_id: int, form_data: dict) -> int:
+    ausgabe_str = form_data.get("ausgabe")
+    rueckgabe_str = form_data.get("rueckgabe")
+    email = form_data.get("email")
+
+    if not ausgabe_str or not rueckgabe_str or not email:
+        raise Exception("Bitte alle Felder ausfüllen.")
+
+    ausgabe = date.fromisoformat(ausgabe_str)
+    rueckgabe = date.fromisoformat(rueckgabe_str)
+
+    if ausgabe < date.today():
+        raise Exception("Ausgabedatum kann nicht in der Vergangenheit liegen.")
+
+    if rueckgabe < ausgabe:
+        raise Exception("Rückgabedatum darf nicht vor dem Ausgabedatum liegen.")
+
+    with SessionLocal() as session:
+        overlap = session.execute(
+            text("""
+                SELECT 1 FROM loans
+                WHERE box_id = :bid
+                  AND status IN ('OPEN', 'OVERDUE')
+                  AND (
+                        :new_start <= planned_end_date
+                    AND :new_end   >= planned_start_date
+                  )
+                LIMIT 1
+            """),
+            {"bid": box_id, "new_start": ausgabe, "new_end": rueckgabe}
+        ).first()
+
+        if overlap:
+            raise Exception("Diese Box ist im angegebenen Zeitraum bereits ausgeliehen!")
+
+    return create_loan(
+        box_id=box_id,
+        contact_email=email,
+        planned_start_date=ausgabe,
+        planned_end_date=rueckgabe,
+        created_by_user_id=2,
+    )
+
 
 # ---------------------------------------------------------
 #  Details einer einzelnen Leihe abrufen
 # ---------------------------------------------------------
-def get_loan_by_id(loan_id: int) -> Optional[Dict[str, Any]]:
-    """
-    Holt Details einer einzelnen Leihe.
-    """
-    with SessionLocal() as session:
-        row = session.execute(
-            text("""
-                SELECT
-                    l.*,
-                    b.box_code
-                FROM loans l
-                JOIN boxes b ON l.box_id = b.id
-                WHERE l.id = :loan_id
-            """),
-            {"loan_id": loan_id}
-        ).mappings().first()
-
-        return dict(row) if row else None
 
 
 # ---------------------------------------------------------
@@ -329,22 +374,6 @@ def get_planned_periods_for_box(box_id: int) -> List[Dict[str, date]]:
 
 
 
-def create_loan_with_validation(box_id: int, form_data: dict) -> int:
-    ausgabe_str = form_data.get("ausgabe")
-    rueckgabe_str = form_data.get("rueckgabe")
-    email = form_data.get("email")
-
-    if not ausgabe_str or not rueckgabe_str or not email:
-        raise Exception("Bitte alle Felder ausfüllen.")
-
-    ausgabe = date.fromisoformat(ausgabe_str)
-    rueckgabe = date.fromisoformat(rueckgabe_str)
-
-    if ausgabe < date.today():
-        raise Exception("Ausgabedatum kann nicht in der Vergangenheit liegen.")
-
-    if rueckgabe < ausgabe:
-        raise Exception("Rückgabedatum darf nicht vor dem Ausgabedatum liegen.")
 
     with SessionLocal() as session:
         overlap = session.execute(
