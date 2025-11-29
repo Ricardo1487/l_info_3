@@ -15,18 +15,23 @@ from functools import wraps
 # loans importieren
 from app.services.loans import (
     list_loans,
-    create_loan,
     get_loan_by_id,
     return_loan,
     extend_loan,
     get_planned_periods_for_box,
-    create_loan_with_validation,  # falls du sie hier nutzt
+    create_loan_with_validation,
 )
 
 from app.services.loan_views import (  # NEU
     compute_loan_stats,
     filter_loans,
     sort_loans,
+)
+
+from app.services.loan_status import (
+    mark_overdue_loans,
+    mark_missing_items,
+    delete_loan_if_fully_returned
 )
 
 # boxes importieren
@@ -234,6 +239,9 @@ def delete_user_route(user_id):
 @app.route("/")
 @login_required
 def home():
+    # 0) Stati aktualisieren: alle überfälligen auf OVERDUE setzen
+    mark_overdue_loans(date.today())
+
     # 1) Parameter
     sort_field = request.args.get("sort_field", "return_date").strip()
     sort_dir = request.args.get("sort_dir", "asc").strip().lower()

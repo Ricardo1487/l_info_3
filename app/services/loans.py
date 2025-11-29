@@ -32,6 +32,26 @@ def list_loans() -> List[Dict[str, Any]]:
 
         return [dict(r) for r in rows]
 
+def get_loan_by_id(loan_id: int) -> Optional[Dict[str, Any]]:
+    """
+    Holt Details einer einzelnen Leihe.
+    """
+    with SessionLocal() as session:
+        row = session.execute(
+            text("""
+                SELECT
+                    l.*,
+                    b.box_code
+                FROM loans l
+                JOIN boxes b ON l.box_id = b.id
+                WHERE l.id = :loan_id
+            """),
+            {"loan_id": loan_id}
+        ).mappings().first()
+
+        return dict(row) if row else None
+
+
 
 # ---------------------------------------------------------
 #  Neue Leihe anlegen
@@ -85,28 +105,53 @@ def create_loan(
         session.commit()
         return loan_id
 
+def create_loan_with_validation(box_id: int, form_data: dict) -> int:
+    ausgabe_str = form_data.get("ausgabe")
+    rueckgabe_str = form_data.get("rueckgabe")
+    email = form_data.get("email")
+
+    if not ausgabe_str or not rueckgabe_str or not email:
+        raise Exception("Bitte alle Felder ausfüllen.")
+
+    ausgabe = date.fromisoformat(ausgabe_str)
+    rueckgabe = date.fromisoformat(rueckgabe_str)
+
+    if ausgabe < date.today():
+        raise Exception("Ausgabedatum kann nicht in der Vergangenheit liegen.")
+
+    if rueckgabe < ausgabe:
+        raise Exception("Rückgabedatum darf nicht vor dem Ausgabedatum liegen.")
+
+    with SessionLocal() as session:
+        overlap = session.execute(
+            text("""
+                SELECT 1 FROM loans
+                WHERE box_id = :bid
+                  AND status IN ('OPEN', 'OVERDUE')
+                  AND (
+                        :new_start <= planned_end_date
+                    AND :new_end   >= planned_start_date
+                  )
+                LIMIT 1
+            """),
+            {"bid": box_id, "new_start": ausgabe, "new_end": rueckgabe}
+        ).first()
+
+        if overlap:
+            raise Exception("Diese Box ist im angegebenen Zeitraum bereits ausgeliehen!")
+
+    return create_loan(
+        box_id=box_id,
+        contact_email=email,
+        planned_start_date=ausgabe,
+        planned_end_date=rueckgabe,
+        created_by_user_id=2,
+    )
+
 
 # ---------------------------------------------------------
 #  Details einer einzelnen Leihe abrufen
 # ---------------------------------------------------------
-def get_loan_by_id(loan_id: int) -> Optional[Dict[str, Any]]:
-    """
-    Holt Details einer einzelnen Leihe.
-    """
-    with SessionLocal() as session:
-        row = session.execute(
-            text("""
-                SELECT
-                    l.*,
-                    b.box_code
-                FROM loans l
-                JOIN boxes b ON l.box_id = b.id
-                WHERE l.id = :loan_id
-            """),
-            {"loan_id": loan_id}
-        ).mappings().first()
-
-        return dict(row) if row else None
 
 
 # ---------------------------------------------------------
@@ -168,135 +213,6 @@ def extend_loan(
 
 
 # ---------------------------------------------------------
-#  Leihe als "MISSING_ITEMS" markieren
-# ---------------------------------------------------------
-def mark_missing_items(
-    *,
-    loan_id: int
-) -> None:
-    """
-    Setzt den Status auf 'MISSING_ITEMS',
-    wenn nach der Rückgabe Teile fehlen.
-    """
-    with SessionLocal() as session:
-        session.execute(
-            text("""
-                UPDATE loans
-                SET status = 'MISSING_ITEMS'
-                WHERE id = :loan_id
-            """),
-            {"loan_id": loan_id}
-        )
-        session.commit()
-
-
-def mark_overdue_loans(today: date) -> int:
-    """
-    Setzt den Status auf 'OVERDUE' für alle Leihen,
-    deren geplantes Rückgabedatum vor 'today' liegt
-    und die noch nicht tatsächlich zurückgegeben wurden.
-
-    Rückgabe:
-      - Anzahl der aktualisierten Zeilen.
-    """
-    with SessionLocal() as session:
-        result = session.execute(
-            text("""
-                UPDATE loans
-                SET status = 'OVERDUE'
-                WHERE
-                    status = 'OPEN'
-                    AND planned_end_date < :today
-                    AND actual_end_date IS NULL
-            """),
-            {"today": today},
-        )
-        session.commit()
-        return result.rowcount
-
-# ---------------------------------------------------------
-#  Leihe + alle zugehörigen Daten löschen,
-#  aber nur, wenn sie wirklich vollständig zurückgegeben ist
-# ---------------------------------------------------------
-def delete_loan_if_fully_returned(loan_id: int) -> bool:
-    """
-    Löscht eine Leihe und alle verknüpften Daten (Fotos, erkannte Objekte,
-    Erinnerungen) **nur**, wenn sie als vollständig zurückgegeben gilt.
-
-    Bedingungen aktuell:
-      - loans.status = 'RETURNED'
-      - loans.actual_end_date IS NOT NULL
-
-    Rückgabe:
-      - True  -> Leihe wurde gelöscht
-      - False -> Bedingungen nicht erfüllt, nichts gelöscht
-    """
-    with SessionLocal() as session:
-        # 1) Status und tatsächliches Enddatum prüfen
-        row = session.execute(
-            text("""
-                SELECT status, actual_end_date
-                FROM loans
-                WHERE id = :loan_id
-            """),
-            {"loan_id": loan_id},
-        ).mappings().first()
-
-        if row is None:
-            # Leihe existiert gar nicht
-            return False
-
-        status = row["status"]
-        actual_end_date = row["actual_end_date"]
-
-        # Nur löschen, wenn sie sauber zurückgegeben ist
-        if status != "RETURNED" or actual_end_date is None:
-            return False
-
-        # 2) Detected Objects löschen (zu Fotos dieser Leihe)
-        session.execute(
-            text("""
-                DELETE FROM detected_objects
-                WHERE photo_id IN (
-                    SELECT id FROM photos WHERE loan_id = :loan_id
-                )
-            """),
-            {"loan_id": loan_id},
-        )
-
-        # 3) Fotos löschen
-        session.execute(
-            text("""
-                DELETE FROM photos
-                WHERE loan_id = :loan_id
-            """),
-            {"loan_id": loan_id},
-        )
-
-        # 4) Erinnerungen löschen
-        session.execute(
-            text("""
-                DELETE FROM reminders
-                WHERE loan_id = :loan_id
-            """),
-            {"loan_id": loan_id},
-        )
-
-        # 5) Leihe selbst löschen
-        session.execute(
-            text("""
-                DELETE FROM loans
-                WHERE id = :loan_id
-            """),
-            {"loan_id": loan_id},
-        )
-
-
-        session.commit()
-        return True
-
-
-# ---------------------------------------------------------
 #  Verfügbarkeits-Info für eine Box (für Kalender/Frontend)
 # ---------------------------------------------------------
 def get_planned_periods_for_box(box_id: int) -> List[Dict[str, date]]:
@@ -329,45 +245,3 @@ def get_planned_periods_for_box(box_id: int) -> List[Dict[str, date]]:
 
 
 
-def create_loan_with_validation(box_id: int, form_data: dict) -> int:
-    ausgabe_str = form_data.get("ausgabe")
-    rueckgabe_str = form_data.get("rueckgabe")
-    email = form_data.get("email")
-
-    if not ausgabe_str or not rueckgabe_str or not email:
-        raise Exception("Bitte alle Felder ausfüllen.")
-
-    ausgabe = date.fromisoformat(ausgabe_str)
-    rueckgabe = date.fromisoformat(rueckgabe_str)
-
-    if ausgabe < date.today():
-        raise Exception("Ausgabedatum kann nicht in der Vergangenheit liegen.")
-
-    if rueckgabe < ausgabe:
-        raise Exception("Rückgabedatum darf nicht vor dem Ausgabedatum liegen.")
-
-    with SessionLocal() as session:
-        overlap = session.execute(
-            text("""
-                SELECT 1 FROM loans
-                WHERE box_id = :bid
-                  AND status IN ('OPEN', 'OVERDUE')
-                  AND (
-                        :new_start <= planned_end_date
-                    AND :new_end   >= planned_start_date
-                  )
-                LIMIT 1
-            """),
-            {"bid": box_id, "new_start": ausgabe, "new_end": rueckgabe}
-        ).first()
-
-        if overlap:
-            raise Exception("Diese Box ist im angegebenen Zeitraum bereits ausgeliehen!")
-
-    return create_loan(
-        box_id=box_id,
-        contact_email=email,
-        planned_start_date=ausgabe,
-        planned_end_date=rueckgabe,
-        created_by_user_id=2,
-    )
