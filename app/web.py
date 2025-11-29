@@ -21,6 +21,8 @@ from app.services.loans import (
     extend_loan,
     get_planned_periods_for_box,
     create_loan_with_validation,
+    get_detected_objects_for_photo,
+    compare_object_sets,
 )
 
 from app.services.loan_views import (  # NEU
@@ -530,7 +532,79 @@ def return_box(loan_id: int):
         )
         return redirect(url_for("home"))
 
-    return render_template("return.html", title="Rückgabe", loan=loan)
+    # GET: Direkt in den neuen Rückgabe-Foto-Flow verzweigen
+    return redirect(url_for("upload_return_photo", loan_id=loan_id))
+
+
+# ---------------------------------------------------
+# Rückgabe-Foto hochladen & KI-Analyse (RETURN)
+# ---------------------------------------------------
+@app.route("/loan/<int:loan_id>/return-photo", methods=["GET", "POST"])
+@login_required
+def upload_return_photo(loan_id: int):
+    loan = get_loan_by_id(loan_id)
+    if loan is None:
+        abort(404, "Leihe nicht gefunden.")
+
+    if request.method == "POST":
+        photo = request.files.get("photo")
+        if not photo:
+            abort(400, "Foto fehlt.")
+
+        # Bild mit KI analysieren (Inhalt bei Rückgabe erkennen)
+        try:
+            analysis = analyze_image_file(photo)
+            print("RETURN ANALYSIS:", analysis)
+            detected_objects = analysis.get("objects", [])
+            print("RETURN OBJECTS:", detected_objects)
+        except Exception as e:
+            print("Fehler bei der Rückgabe-Bildanalyse:", e)
+            detected_objects = []
+
+        # Foto nach Supabase hochladen (wir verwenden die gleiche Helper-Funktion)
+        bucket_key = upload_initial_photo_for_loan(loan_id, photo)
+
+        # Foto-Eintrag + erkannte Objekte als RETURN speichern
+        with SessionLocal() as session:
+            result = session.execute(
+                text("""
+                    INSERT INTO photos (loan_id, type, file_path, created_by_user_id)
+                    VALUES (:loan_id, 'RETURN', :file_path, :user_id)
+                    RETURNING id
+                """),
+                {
+                    "loan_id": loan_id,
+                    "file_path": bucket_key,
+                    "user_id": 2,  # TODO: aus Login übernehmen
+                }
+            )
+            photo_id = result.scalar_one()
+
+            for obj in detected_objects:
+                session.execute(
+                    text("""
+                        INSERT INTO detected_objects (photo_id, label, confidence, quantity, is_manually_edited)
+                        VALUES (:photo_id, :label, :confidence, :quantity, false)
+                    """),
+                    {
+                        "photo_id": photo_id,
+                        "label": obj.get("label"),
+                        "confidence": obj.get("confidence"),
+                        "quantity": obj.get("quantity", 1),
+                    }
+                )
+
+            session.commit()
+
+        # Nach dem Upload/Analyse zur Rückgabe-Review-Seite
+        return redirect(url_for("review_return_contents", loan_id=loan_id))
+
+    # GET: Formular zum Rückgabe-Foto hochladen anzeigen (wir nutzen das existierende Template)
+    return render_template(
+        "upload_photo.html",
+        title="Rückgabe-Foto aufnehmen",
+        loan=loan,
+    )
 
 
 # ---------------------------------------------------
@@ -655,6 +729,77 @@ def review_initial_contents(loan_id: int):
         loan=loan,
         photo_path=file_path,
         objects=objects,
+    )
+
+# ---------------------------------------------------
+# Rückgabe prüfen: INITIAL vs RETURN + Missing Items
+# ---------------------------------------------------
+@app.route("/loan/<int:loan_id>/review-return", methods=["GET", "POST"])
+@login_required
+def review_return_contents(loan_id: int):
+    loan = get_loan_by_id(loan_id)
+    if loan is None:
+        abort(404, "Leihe nicht gefunden.")
+
+    with SessionLocal() as session:
+        initial_photo = session.execute(
+            text(
+                """
+                SELECT file_path
+                FROM photos
+                WHERE loan_id = :loan_id AND type = 'INITIAL'
+                ORDER BY id DESC
+                LIMIT 1
+                """
+            ),
+            {"loan_id": loan_id},
+        ).mappings().first()
+
+        return_photo = session.execute(
+            text(
+                """
+                SELECT file_path
+                FROM photos
+                WHERE loan_id = :loan_id AND type = 'RETURN'
+                ORDER BY id DESC
+                LIMIT 1
+                """
+            ),
+            {"loan_id": loan_id},
+        ).mappings().first()
+
+        initial_objects = get_detected_objects_for_photo(session, loan_id, "INITIAL")
+        returned_objects = get_detected_objects_for_photo(session, loan_id, "RETURN")
+        missing_objects = compare_object_sets(initial_objects, returned_objects)
+
+        if request.method == "POST":
+            # Leihe als zurückgegeben markieren
+            return_loan(
+                loan_id=loan_id,
+                actual_end_date=date.today(),
+                closed_by_user_id=2,  # TODO: user_id aus Session nutzen
+            )
+
+            # Wenn etwas fehlt → Missing Items markieren, sonst ggf. Loan aufräumen
+            try:
+                if missing_objects:
+                    mark_missing_items(loan_id)
+                else:
+                    delete_loan_if_fully_returned(loan_id)
+            except Exception as e:
+                print("Fehler beim Markieren/Löschen der Leihe:", e)
+
+            return redirect(url_for("home"))
+
+    return render_template(
+        "review_return_contents.html",
+        title="Rückgabe prüfen",
+        loan=loan,
+        initial_photo_path=initial_photo["file_path"] if initial_photo else None,
+        return_photo_path=return_photo["file_path"] if return_photo else None,
+        initial_objects=initial_objects,
+        returned_objects=returned_objects,
+        missing_objects=missing_objects,
     )
 
 # ---------------------------------------------------
