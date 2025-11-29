@@ -465,6 +465,7 @@ label {
 
 input[type="text"],
 input[type="email"],
+input[type="password"],
 input[type="date"],
 input[type="file"],
 input[type="search"],
@@ -481,6 +482,7 @@ select {
 
 html[data-theme="themeForest"] input[type="text"],
 html[data-theme="themeForest"] input[type="email"],
+html[data-theme="themeForest"] input[type="password"],
 html[data-theme="themeForest"] input[type="date"],
 html[data-theme="themeForest"] input[type="file"],
 html[data-theme="themeForest"] input[type="search"],
