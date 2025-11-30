@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="loan-details-container">
+
+    <h1 class="page-title">Leihe {{ loan.id }}</h1>
+
+    <!-- Oberer Info-Bereich -->
+    <div class="loan-info-card">
+
+        <div class="loan-info-row">
+            <div class="loan-label">Box:</div>
+            <div class="loan-value">{{ loan.box_code }}</div>
+        </div>
+
+        <div class="loan-info-row">
+            <div class="loan-label">Kontakt:</div>
+            <div class="loan-value">{{ loan.contact_email }}</div>
+        </div>
+
+        <div class="loan-info-row">
+            <div class="loan-label">Ausgabe:</div>
+            <div class="loan-value">{{ loan.planned_start_date_formatted }}</div>
+        </div>
+
+        <div class="loan-info-row">
+            <div class="loan-label">Rückgabe geplant:</div>
+            <div class="loan-value">{{ loan.planned_end_date_formatted }}</div>
+        </div>
+
+        <div class="loan-info-row">
+            <div class="loan-label">Status:</div>
+            <div class="loan-value">
+                <span class="status-badge status-{{ loan.status|lower }}">
+                    {{ loan.status }}
+                </span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Foto -->
+    {% if loan.initial_photo %}
+    <h2 class="section-title">Erstes Foto</h2>
+
+    <button class="photo-toggle-btn" onclick="togglePhoto()">📷 Foto anzeigen</button>
+
+    <div id="photo-dropdown" class="photo-dropdown">
+        <img src="{{ loan.initial_photo }}" alt="Foto der Box" class="loan-photo">
+    </div>
+
+    <script>
+        function togglePhoto() {
+            const box = document.getElementById('photo-dropdown');
+            box.classList.toggle('open');
+        }
+    </script>
+    {% else %}
+    <h2 class="section-title">Erstes Foto</h2>
+    <p class="no-photo-hint">Kein Foto vorhanden.</p>
+    {% endif %}
+
+    <!-- Buttons -->
+    <div class="button-row">
+        <a href="{{ url_for('home') }}" class="btn btn-secondary">Zurück</a>
+
+        {% if loan.status != "RETURNED" %}
+            <a href="{{ url_for('return_box', loan_id=loan.id) }}" class="btn btn-primary">
+                Rückgabe starten
+            </a>
+        {% endif %}
+    </div>
+
+</div>
+
+{% endblock %}

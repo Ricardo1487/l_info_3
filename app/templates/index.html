@@ -126,6 +126,7 @@
     {# Karten-Liste mit allen Leihen #}
     <section class="card-list">
       {% for loan in loans %}
+        <a href="{{ url_for('loan_details', loan_id=loan.id) }}" class="loan-card-wrapper">
         <article class="loan-card">
 
           <header class="loan-card-header">
@@ -167,6 +168,7 @@
           </footer>
 
         </article>
+        </a>
       {% endfor %}
     </section>
 
