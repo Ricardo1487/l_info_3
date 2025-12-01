@@ -17,20 +17,24 @@
     {% endif %}
 
     <form method="post" class="form">
-      <div class="form-group">
-        <label for="box_code">Box-Nummer</label>
-        <input
-          type="text"
-          id="box_code"
-          name="box_code"
-          placeholder="z. B. 23"
-          value="{{ box_code or '' }}"
-          required
-        >
-        <p class="field-hint">
-          Nur Zahl (1–3 Stellen). Wird automatisch zu <code>BOX-XYZ</code> formatiert.
-        </p>
-      </div>
+        <div class="form-group">
+            <label for="box_code">Box-Nummer</label>
+            <input id="box_code"
+                   name="box_code"
+                   type="text"
+                   placeholder="z.B. 23"
+                   value="{{ box_code or '' }}"
+                   inputmode="numeric"
+                   pattern="[0-9]{1,3}"
+                   maxlength="3"
+                   oninput="
+                        this.value = this.value.replace(/[^0-9]/g,'').slice(0,3);
+                   "
+                   required>
+            <p class="field-hint">
+                Nur Zahl (1–3 Stellen). <code>BOX-</code> wird automatisch ergänzt.
+            </p>
+        </div>
 
       <div class="form-group">
         <button type="submit" class="btn-primary full-width">
