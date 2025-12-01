@@ -12,6 +12,9 @@ import os
 import bcrypt
 from functools import wraps
 
+import io
+import qrcode
+import secrets  # kannst du von unten hier hochziehen, wenn du magst
 
 # loans importieren
 from app.services.loans import (
@@ -466,6 +469,109 @@ def confirm_new_box():
         return redirect(url_for("upload_photo", loan_id=loan_id))
 
     abort(400, "Ungültige Auswahl.")
+
+
+# ---------------------------------------------------
+# Eigene Seite: Box manuell anlegen + QR-Code
+# ---------------------------------------------------
+@app.route("/boxes/new", methods=["GET", "POST"])
+@login_required
+def new_box():
+    """
+    Manuelles Anlegen einer Box – gleiche Logik wie beim Anlegen
+    über 'confirm_new_box': User gibt eine Zahl ein → BOX-###,
+    Format wird geprüft, Box darf noch nicht existieren, dann create_box(box_code).
+    """
+    from app.services.boxes import validate_box_code  # gleiche Funktion wie in start_loan
+
+    if request.method == "GET":
+        # Einfaches Formular mit einem Feld für die Nummer
+        return render_template(
+            "new_box.html",
+            title="Neue Box anlegen",
+            current_date=date.today().isoformat(),  # falls du das im Layout brauchst
+        )
+
+    # POST: Box-Code aus Formular holen
+    box_code_raw = request.form.get("box_code", "").strip()
+
+    # === USER EINGIBT NUR ZAHL ===
+    # Beispiel: "23" → "BOX-023"
+    if box_code_raw.isdigit():
+        box_code = f"BOX-{int(box_code_raw):03d}"
+    else:
+        box_code = box_code_raw.upper()
+
+    # === FORMAT VALIDIEREN (wie in start_loan) ===
+    if not validate_box_code(box_code):
+        return render_template(
+            "new_box.html",
+            title="Neue Box anlegen",
+            error="Bitte nur Zahlen eingeben (1 bis 3 Stellen).",
+            box_code=box_code_raw,
+        )
+
+    # === EXISTIERT DIE BOX SCHON? ===
+    existing_box_id = get_box_id_by_code(box_code)
+    if existing_box_id is not None:
+        return render_template(
+            "new_box.html",
+            title="Neue Box anlegen",
+            error="Diese Box existiert bereits.",
+            box_code=box_code_raw,
+        )
+
+    # === NEUE BOX ANLEGEN – gleiches Vorgehen wie in confirm_new_box ===
+    new_box_id = create_box(box_code)
+
+    # Danach auf die QR-Seite gehen
+    return redirect(url_for("box_created", box_id=new_box_id))
+
+@app.route("/boxes/<int:box_id>/created")
+@login_required
+def box_created(box_id: int):
+    """
+    Zeigt nach dem Anlegen der Box die Bestätigungsseite mit Box-Code und QR.
+    """
+    # Box-Daten holen: du kannst hier später einen richtigen Service nutzen.
+    # Da wir aktuell nur den Code brauchen, reicht ein einfacher Query über get_box_id_by_code nicht.
+    # Wenn du bereits einen Service get_box_by_id(...) hast, nutze den hier.
+    with SessionLocal() as session:
+        row = session.execute(
+            text("SELECT box_code FROM boxes WHERE id = :id"),
+            {"id": box_id},
+        ).mappings().first()
+
+    if row is None:
+        abort(404, "Box nicht gefunden.")
+
+    box = {
+        "id": box_id,
+        "box_code": row["box_code"],
+        # Platzhalter für spätere Felder wie name/description
+    }
+
+    return render_template("box_created.html", title="Box erstellt", box=box)
+
+
+@app.route("/boxes/<box_code>/qr")
+@login_required
+def get_box_qr(box_code: str):
+    """
+    Liefert ein PNG mit einem QR-Code, der auf die Box führt.
+    Aktuell: Link auf die Übersicht mit einem Box-Query-Parameter (?box=CODE),
+    den du später im Frontend als Filter verwenden kannst.
+    """
+    # Host-URL + gewünschtes Ziel bauen, z.B. Übersicht mit Filter
+    # http://127.0.0.1:5000/?box=BOX-ABC123
+    payload_url = request.host_url.rstrip("/") + url_for("home") + f"?box={box_code}"
+
+    img = qrcode.make(payload_url)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+
+    return flask.send_file(buf, mimetype="image/png")
 
 
 # ---------------------------------------------------

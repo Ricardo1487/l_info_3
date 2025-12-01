@@ -4,47 +4,37 @@
   <div class="page-header">
     <h1 class="page-title">Neue Box anlegen</h1>
     <p class="page-subtitle">
-      Lege eine neue Material-Box an. Der Box-Code und der zugehörige QR-Code
-      werden automatisch erzeugt.
+      Bitte gib die Box-Nummer ein. Die Anwendung legt dann die Box
+      (z. B. <code>BOX-023</code>) an und erzeugt einen QR-Code.
     </p>
   </div>
 
   <div class="card">
+    {% if error %}
+      <div class="error-banner">
+        {{ error }}
+      </div>
+    {% endif %}
+
     <form method="post" class="form">
       <div class="form-group">
-        <label for="name">Box-Name</label>
+        <label for="box_code">Box-Nummer</label>
         <input
           type="text"
-          id="name"
-          name="name"
-          placeholder="z. B. Elektronik-Grundbaukasten"
+          id="box_code"
+          name="box_code"
+          placeholder="z. B. 23"
+          value="{{ box_code or '' }}"
           required
         >
-      </div>
-
-      <div class="form-group">
-        <label for="description">Beschreibung (optional)</label>
-        <input
-          type="text"
-          id="description"
-          name="description"
-          placeholder="Kurzbeschreibung der Inhalte"
-        >
-      </div>
-
-      <div class="form-group">
-        <label for="internal_note">Interne Notiz (optional)</label>
-        <input
-          type="text"
-          id="internal_note"
-          name="internal_note"
-          placeholder="Nur für Hiwis/Admin sichtbar (z. B. Lagerort)"
-        >
+        <p class="field-hint">
+          Nur Zahl (1–3 Stellen). Wird automatisch zu <code>BOX-XYZ</code> formatiert.
+        </p>
       </div>
 
       <div class="form-group">
         <button type="submit" class="btn-primary full-width">
-          Box erstellen &amp; QR-Code generieren
+          Box anlegen
         </button>
       </div>
     </form>
