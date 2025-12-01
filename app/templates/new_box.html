@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="page-header">
+    <h1 class="page-title">Neue Box anlegen</h1>
+    <p class="page-subtitle">
+      Lege eine neue Material-Box an. Der Box-Code und der zugehörige QR-Code
+      werden automatisch erzeugt.
+    </p>
+  </div>
+
+  <div class="card">
+    <form method="post" class="form">
+      <div class="form-group">
+        <label for="name">Box-Name</label>
+        <input
+          type="text"
+          id="name"
+          name="name"
+          placeholder="z. B. Elektronik-Grundbaukasten"
+          required
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="description">Beschreibung (optional)</label>
+        <input
+          type="text"
+          id="description"
+          name="description"
+          placeholder="Kurzbeschreibung der Inhalte"
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="internal_note">Interne Notiz (optional)</label>
+        <input
+          type="text"
+          id="internal_note"
+          name="internal_note"
+          placeholder="Nur für Hiwis/Admin sichtbar (z. B. Lagerort)"
+        >
+      </div>
+
+      <div class="form-group">
+        <button type="submit" class="btn-primary full-width">
+          Box erstellen &amp; QR-Code generieren
+        </button>
+      </div>
+    </form>
+  </div>
+{% endblock %}
