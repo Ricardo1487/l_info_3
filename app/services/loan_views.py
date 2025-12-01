@@ -1,5 +1,6 @@
 # app/services/loan_views.py
 from datetime import date
+from typing import Optional
 
 
 def compute_loan_stats(loans: list[dict]) -> dict:
@@ -15,7 +16,7 @@ def compute_loan_stats(loans: list[dict]) -> dict:
     }
 
 
-def filter_loans(loans: list[dict], contact: str | None, status: str | None) -> list[dict]:
+def filter_loans(loans: list[dict], contact: Optional[str], status: Optional[str]) -> list[dict]:
     """
     Filtert Leihen nach Kontakt-E-Mail und Status.
     """

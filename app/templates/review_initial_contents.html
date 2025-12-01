@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Foto &amp; Inhalt prüfen – Leihe #{{ loan.id }}</h1>
+
+<hr>
+
+<h2>📷 Foto</h2>
+{% if photo_path %}
+    <img src="{{ photo_path }}" alt="Foto der Box"
+         style="max-width: 100%; border-radius: 8px; margin-bottom: 1rem;">
+    <p><small>Pfad/URL: {{ photo_path }}</small></p>
+{% else %}
+    <p>Kein Foto vorhanden.</p>
+{% endif %}
+
+<hr>
+
+<h2>🧾 Erkannte Gegenstände</h2>
+
+{% if objects %}
+<form method="post">
+    <table>
+        <thead>
+            <tr>
+                <th>Label</th>
+                <th>Menge</th>
+                <th>Confidence</th>
+                <th>Bearbeitet?</th>
+                <th>Löschen</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for obj in objects %}
+            <tr>
+                <td>
+                    <input type="text" name="label_{{ obj.id }}" value="{{ obj.label }}">
+                </td>
+                <td>
+                    <input type="number" name="quantity_{{ obj.id }}" value="{{ obj.quantity }}" min="1" step="1">
+                </td>
+                <td>
+                    {{ "%.2f"|format(obj.confidence or 0) }}
+                </td>
+                <td>
+                    {% if obj.is_manually_edited %}
+                        ✅
+                    {% else %}
+                        ❌
+                    {% endif %}
+                </td>
+                <td>
+                    <input type="checkbox" name="delete_{{ obj.id }}">
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <button type="submit" class="btn-primary" style="margin-top: 1rem;">
+        Änderungen übernehmen &amp; zurück zur Übersicht
+    </button>
+</form>
+{% else %}
+    <p>Keine erkannten Gegenstände vorhanden.</p>
+{% endif %}
+
+<hr>
+
+<a href="{{ url_for('home') }}" class="btn-secondary">Zurück zur Übersicht</a>
+
+{% endblock %}
