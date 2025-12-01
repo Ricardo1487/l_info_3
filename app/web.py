@@ -2,7 +2,7 @@ from dotenv import load_dotenv  # .env laden (für Supabase etc.)
 load_dotenv()
 
 from datetime import date
-from flask import Flask, render_template, request, redirect, url_for, abort, jsonify, session, flash
+from flask import Flask, render_template, request, redirect, url_for, abort, jsonify, session, flash, send_file
 
 from sqlalchemy import text
 from app.config.database import SessionLocal
@@ -44,6 +44,7 @@ from app.services.loan_status import (
 from app.services.boxes import (
     get_box_id_by_code,
     create_box,
+    validate_box_code,
 )
 
 # photos_storage importieren – neue Funktion für direkten Upload
@@ -482,27 +483,22 @@ def new_box():
     über 'confirm_new_box': User gibt eine Zahl ein → BOX-###,
     Format wird geprüft, Box darf noch nicht existieren, dann create_box(box_code).
     """
-    from app.services.boxes import validate_box_code  # gleiche Funktion wie in start_loan
-
     if request.method == "GET":
-        # Einfaches Formular mit einem Feld für die Nummer
         return render_template(
             "new_box.html",
             title="Neue Box anlegen",
-            current_date=date.today().isoformat(),  # falls du das im Layout brauchst
         )
 
     # POST: Box-Code aus Formular holen
     box_code_raw = request.form.get("box_code", "").strip()
 
-    # === USER EINGIBT NUR ZAHL ===
-    # Beispiel: "23" → "BOX-023"
+    # USER EINGIBT NUR ZAHL (1–3 Stellen), wir ergänzen BOX-XYZ
     if box_code_raw.isdigit():
         box_code = f"BOX-{int(box_code_raw):03d}"
     else:
         box_code = box_code_raw.upper()
 
-    # === FORMAT VALIDIEREN (wie in start_loan) ===
+    # FORMAT VALIDIEREN
     if not validate_box_code(box_code):
         return render_template(
             "new_box.html",
@@ -511,7 +507,7 @@ def new_box():
             box_code=box_code_raw,
         )
 
-    # === EXISTIERT DIE BOX SCHON? ===
+    # EXISTIERT DIE BOX SCHON?
     existing_box_id = get_box_id_by_code(box_code)
     if existing_box_id is not None:
         return render_template(
@@ -521,7 +517,7 @@ def new_box():
             box_code=box_code_raw,
         )
 
-    # === NEUE BOX ANLEGEN – gleiches Vorgehen wie in confirm_new_box ===
+    # NEUE BOX ANLEGEN – gleiches Vorgehen wie in confirm_new_box
     new_box_id = create_box(box_code)
 
     # Danach auf die QR-Seite gehen
@@ -571,7 +567,7 @@ def get_box_qr(box_code: str):
     img.save(buf, format="PNG")
     buf.seek(0)
 
-    return flask.send_file(buf, mimetype="image/png")
+    return send_file(buf, mimetype="image/png")
 
 
 # ---------------------------------------------------
