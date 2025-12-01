@@ -27,6 +27,7 @@ def list_loans() -> List[Dict[str, Any]]:
                 b.box_code
             FROM loans l
             JOIN boxes b ON l.box_id = b.id
+            WHERE l.status IN ('OPEN', 'OVERDUE', 'MISSING_ITEMS')
             ORDER BY l.planned_end_date ASC
         """)).mappings().all()
 
@@ -169,17 +170,11 @@ def return_loan(
     with SessionLocal() as session:
         session.execute(
             text("""
-                UPDATE loans
-                SET
-                    status = 'RETURNED',
-                    actual_end_date = :actual_end,
-                    closed_by_user_id = :closed_by
+                DELETE FROM loans
                 WHERE id = :loan_id
             """),
             {
-                "loan_id": loan_id,
-                "actual_end": actual_end_date,
-                "closed_by": closed_by_user_id
+                "loan_id": loan_id
             }
         )
         session.commit()
@@ -358,7 +353,7 @@ def get_planned_periods_for_box(box_id: int) -> List[Dict[str, date]]:
                 SELECT planned_start_date, planned_end_date
                 FROM loans
                 WHERE box_id = :bid
-                  AND status IN ('OPEN', 'OVERDUE', 'RETURNED')
+                  AND status IN ('OPEN', 'OVERDUE', 'MISSING_ITEMS')
                 ORDER BY planned_start_date
             """),
             {"bid": box_id},

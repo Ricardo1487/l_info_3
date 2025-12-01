@@ -304,6 +304,33 @@ def home():
         missing_count=stats["missing"],
         overdue_count=stats["overdue"],
     )
+
+# ---------------------------------------------------
+# Loan Details Page
+# ---------------------------------------------------
+@app.route("/loan/<int:loan_id>")
+@login_required
+def loan_details(loan_id: int):
+    loan = get_loan_by_id(loan_id)
+    if loan is None:
+        abort(404, "Leihe nicht gefunden.")
+
+    # Format dates for display
+    if isinstance(loan.get("planned_start_date"), date):
+        loan["planned_start_date_formatted"] = loan["planned_start_date"].strftime("%d.%m.%Y")
+    else:
+        loan["planned_start_date_formatted"] = loan.get("planned_start_date")
+
+    if isinstance(loan.get("planned_end_date"), date):
+        loan["planned_end_date_formatted"] = loan["planned_end_date"].strftime("%d.%m.%Y")
+    else:
+        loan["planned_end_date_formatted"] = loan.get("planned_end_date")
+
+    return render_template(
+        "loan_details.html",
+        title=f"Leihe {loan_id}",
+        loan=loan,
+    )
 # ---------------------------------------------------
 # Neue Leihe Formular (Schritt 1 – ohne Foto!)
 # ---------------------------------------------------
