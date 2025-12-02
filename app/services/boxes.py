@@ -1,11 +1,23 @@
 # app/services/boxes.py
 
 import re
+import os
 from typing import Optional
 from sqlalchemy import text
 from app.config.database import SessionLocal
 
 BOX_PATTERN = re.compile(r"^BOX-\d{3}$")
+
+def build_qr_payload(box_code: str) -> str:
+    """
+    Erzeugt die URL, die im QR-Code landen soll.
+    Neuer Workflow: QR-Code soll direkt auf das
+    'Neue Leihe'-Formular zeigen und die Box vorbelegen.
+    Beispiel: https://l-info-3.onrender.com/new-loan?box_code=BOX-023
+    """
+    base_url = os.getenv("PUBLIC_BASE_URL", "http://127.0.0.1:5000")
+    # QR führt direkt ins Neue-Leihe-Formular mit gesetztem box_code
+    return f"{base_url}/new-loan?box_code={box_code}"
 
 
 def validate_box_code(box_code: str) -> bool:
@@ -52,13 +64,15 @@ def create_box(box_code: Optional[str] = None, description: Optional[str] = None
         if not validate_box_code(box_code):
             raise ValueError("Box-Code muss Format BOX-### haben!")
 
+        qr_payload = build_qr_payload(box_code)
+
         result = session.execute(
             text("""
-                INSERT INTO boxes (box_code, is_active)
-                VALUES (:code, TRUE)
+                INSERT INTO boxes (box_code, qr_payload, is_active)
+                VALUES (:code, :qr_payload, TRUE)
                 RETURNING id
             """),
-            {"code": box_code},
+            {"code": box_code, "qr_payload": qr_payload},
         )
         new_id = result.scalar_one()
         session.commit()

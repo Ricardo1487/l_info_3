@@ -257,6 +257,7 @@ def home():
 
     contact = request.args.get("contact", "").strip()
     status_filter = request.args.get("status", "").strip()
+    box_filter = request.args.get("box", "").strip().upper()
 
     # 2) Alle Leihen laden
     all_loans = list_loans()
@@ -269,6 +270,13 @@ def home():
 
     # 5) Sortierung anwenden
     loans = sort_loans(loans, sort_field=sort_field, sort_dir=sort_dir)
+
+    # 5a) Optional Filter nach Box-Code (z.B. via QR-Code ?box=BOX-023)
+    if box_filter:
+        loans = [
+            l for l in loans
+            if str(l.get("box_code", "")).upper() == box_filter
+        ]
 
     # 5b) Datum formatiert hinzufügen (TT.MM.JJJJ)
     for l in loans:
@@ -301,6 +309,7 @@ def home():
         current_sort=f"{sort_field}_{sort_dir}",
         current_contact=contact,
         current_status=status_filter,
+        current_box=box_filter,
         # Statistik-Kacheln
         total_count=stats["total"],
         open_count=stats["open"],
@@ -341,10 +350,28 @@ def loan_details(loan_id: int):
 @app.route("/new-loan")
 @login_required
 def new_loan():
+    """
+    Neue Leihe – optional mit vorbefüllter Box-Nummer,
+    z.B. wenn der Nutzer per QR-Code auf /new-loan?box_code=BOX-023 landet.
+    """
+    raw_box_code = request.args.get("box_code", "").strip().upper()
+
+    # Standard: keine Vorbefüllung
+    prefill_box_code = ""
+
+    # Fall 1: QR-Code liefert BOX-023 → wir machen daraus "23" für das Eingabefeld
+    if raw_box_code.startswith("BOX-") and raw_box_code[4:].isdigit():
+        prefill_box_code = str(int(raw_box_code[4:]))  # "BOX-023" -> "23"
+
+    # Fall 2: Es kommt eine reine Zahl an (z.B. /new-loan?box_code=23)
+    elif raw_box_code.isdigit():
+        prefill_box_code = raw_box_code
+
     return render_template(
         "new_loan.html",
         title="Neue Leihe",
-        current_date=date.today().isoformat()
+        current_date=date.today().isoformat(),
+        box_code=prefill_box_code,
     )
 
 
@@ -554,13 +581,23 @@ def box_created(box_id: int):
 @login_required
 def get_box_qr(box_code: str):
     """
-    Liefert ein PNG mit einem QR-Code, der auf die Box führt.
-    Aktuell: Link auf die Übersicht mit einem Box-Query-Parameter (?box=CODE),
-    den du später im Frontend als Filter verwenden kannst.
+    Liefert ein PNG mit einem QR-Code.
+    Die URL (qr_payload) ist in der DB hinterlegt.
     """
-    # Host-URL + gewünschtes Ziel bauen, z.B. Übersicht mit Filter
-    # http://127.0.0.1:5000/?box=BOX-ABC123
-    payload_url = request.host_url.rstrip("/") + url_for("home") + f"?box={box_code}"
+    with SessionLocal() as session:
+        row = session.execute(
+            text("SELECT qr_payload FROM boxes WHERE box_code = :code"),
+            {"code": box_code},
+        ).mappings().first()
+
+    if row is None:
+        abort(404, "Box nicht gefunden.")
+
+    payload_url = row["qr_payload"]
+
+    # Fallback, falls in der DB noch nichts steht:
+    if not payload_url:
+        payload_url = request.host_url.rstrip("/") + url_for("home") + f"?box={box_code}"
 
     img = qrcode.make(payload_url)
     buf = io.BytesIO()
