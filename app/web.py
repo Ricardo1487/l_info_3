@@ -17,12 +17,12 @@ from functools import wraps
 from app.services.loans import (
     list_loans,
     get_loan_by_id,
-    return_loan,
     extend_loan,
     get_planned_periods_for_box,
     create_loan_with_validation,
     get_detected_objects_for_photo,
     compare_object_sets,
+    delete_loan_if_fully_returned
 )
 
 from app.services.loan_views import (  # NEU
@@ -33,8 +33,8 @@ from app.services.loan_views import (  # NEU
 
 from app.services.loan_status import (
     mark_overdue_loans,
-    mark_missing_items,
-    delete_loan_if_fully_returned
+    return_loan,
+    return_with_missing_items
 )
 
 # boxes importieren
@@ -800,18 +800,25 @@ def review_return_contents(loan_id: int):
         missing_objects = compare_object_sets(initial_objects, returned_objects)
 
         if request.method == "POST":
-            # Leihe als zurückgegeben markieren
-            return_loan(
-                loan_id=loan_id,
-                actual_end_date=date.today(),
-                closed_by_user_id=2,  # TODO: user_id aus Session nutzen
-            )
+            today = date.today()
 
             # Wenn etwas fehlt → Missing Items markieren, sonst ggf. Loan aufräumen
             try:
                 if missing_objects:
-                    mark_missing_items(loan_id)
+                    # 🔴 Es fehlen Teile → Leihe als MISSING_ITEMS abschließen
+                    return_with_missing_items(
+                        loan_id=loan_id,
+                        actual_end_date=today,
+                        closed_by_user_id=2,  # TODO: session["user_id"]
+                    )
                 else:
+                    # ✅ Alles da → Leihe als RETURNED markieren
+                    return_loan(
+                        loan_id=loan_id,
+                        actual_end_date=today,
+                        closed_by_user_id=2,  # TODO: session["user_id"]
+                    )
+
                     delete_loan_if_fully_returned(loan_id)
             except Exception as e:
                 print("Fehler beim Markieren/Löschen der Leihe:", e)
