@@ -8,6 +8,16 @@
     </p>
   </div>
 
+  {% if box.loan_id %}
+    <div class="button-row">
+      <button type="button"
+              class="btn-primary full-width"
+              onclick="window.location.href='{{ url_for('upload_photo', loan_id=box.loan_id) }}'">
+        Weiter: Foto für diese Leihe aufnehmen
+      </button>
+    </div>
+  {% endif %}
+
   <div class="loan-details-container">
     <div class="loan-info-card">
       <div class="loan-info-row">
@@ -26,7 +36,7 @@
     <div class="loan-info-card">
       <h2 class="section-title">QR-Code</h2>
       <p class="page-subtitle">
-        Scannen führt direkt zur Übersicht mit dieser Box.
+        QR-Code scannen → Neue Leihe wird automatisch mit dieser Box gestartet.
       </p>
 
       <div class="photo-wrapper">

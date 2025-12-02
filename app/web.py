@@ -494,7 +494,8 @@ def confirm_new_box():
     if decision == "yes":
         new_box_id = create_box(box_code)
         loan_id = create_loan_with_validation(new_box_id, form_data)
-        return redirect(url_for("upload_photo", loan_id=loan_id))
+        return redirect(url_for("box_created", box_id=new_box_id, loan_id=loan_id))
+        #return redirect(url_for("upload_photo", loan_id=loan_id))
 
     abort(400, "Ungültige Auswahl.")
 
@@ -555,10 +556,10 @@ def new_box():
 def box_created(box_id: int):
     """
     Zeigt nach dem Anlegen der Box die Bestätigungsseite mit Box-Code und QR.
+    Optional kann eine loan_id als Query-Parameter übergeben werden,
+    damit von hier aus direkt zur zugehörigen Leihe (z.B. Foto-Upload)
+    verzweigt werden kann.
     """
-    # Box-Daten holen: du kannst hier später einen richtigen Service nutzen.
-    # Da wir aktuell nur den Code brauchen, reicht ein einfacher Query über get_box_id_by_code nicht.
-    # Wenn du bereits einen Service get_box_by_id(...) hast, nutze den hier.
     with SessionLocal() as session:
         row = session.execute(
             text("SELECT box_code FROM boxes WHERE id = :id"),
@@ -568,14 +569,16 @@ def box_created(box_id: int):
     if row is None:
         abort(404, "Box nicht gefunden.")
 
+    # Optional: loan_id aus der URL (z.B. /boxes/12/created?loan_id=34)
+    loan_id = request.args.get("loan_id", type=int)
+
     box = {
         "id": box_id,
         "box_code": row["box_code"],
-        # Platzhalter für spätere Felder wie name/description
+        "loan_id": loan_id,
     }
 
     return render_template("box_created.html", title="Box erstellt", box=box)
-
 
 @app.route("/boxes/<box_code>/qr")
 @login_required
