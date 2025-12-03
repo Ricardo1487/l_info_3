@@ -515,6 +515,7 @@ def confirm_new_box():
 @login_required
 def boxes_overview():
     """Übersicht aller Boxen mit optionalem Status und QR-Preview."""
+    # 1) Alle aktiven Boxen holen
     with SessionLocal() as session:
         rows = session.execute(
             text(
@@ -527,7 +528,50 @@ def boxes_overview():
             )
         ).mappings().all()
 
-    boxes = [dict(r) for r in rows]
+    # 2) Alle Leihen laden, um daraus den Box-Status abzuleiten
+    all_loans = list_loans()
+
+    # Mapping: box_code -> Status-Infos
+    status_info = {}
+    for loan in all_loans:
+        box_code = loan.get("box_code")
+        if not box_code:
+            continue
+
+        status = (loan.get("status") or "").upper()
+        info = status_info.setdefault(
+            box_code,
+            {"has_overdue": False, "has_open": False, "has_missing": False},
+        )
+
+        if status == "OVERDUE":
+            info["has_overdue"] = True
+        elif status == "OPEN":
+            info["has_open"] = True
+        elif status == "MISSING_ITEMS":
+            info["has_missing"] = True
+
+    # 3) Für jede Box ein lesbares Status-Label bestimmen
+    boxes = []
+    for r in rows:
+        box_code = r["box_code"]
+        info = status_info.get(box_code, {})
+
+        if info.get("has_overdue"):
+            status_label = "Überfällig"
+        elif info.get("has_open"):
+            status_label = "Ausgeliehen"
+        elif info.get("has_missing"):
+            status_label = "Fehlende Teile"
+        else:
+            status_label = "Frei"
+
+        boxes.append(
+            {
+                "box_code": box_code,
+                "status": status_label,
+            }
+        )
 
     return render_template(
         "boxes.html",  # Template zeigt jetzt die Boxen-Übersicht
