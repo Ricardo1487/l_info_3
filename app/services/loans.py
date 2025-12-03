@@ -106,7 +106,7 @@ def create_loan(
         session.commit()
         return loan_id
 
-def create_loan_with_validation(box_id: int, form_data: dict) -> int:
+def create_loan_with_validation(box_id: int, form_data: dict, created_by_user_id: int) -> int:
     ausgabe_str = form_data.get("ausgabe")
     rueckgabe_str = form_data.get("rueckgabe")
     email = form_data.get("email")
@@ -146,7 +146,7 @@ def create_loan_with_validation(box_id: int, form_data: dict) -> int:
         contact_email=email,
         planned_start_date=ausgabe,
         planned_end_date=rueckgabe,
-        created_by_user_id=2,
+        created_by_user_id=created_by_user_id,
     )
 
 # ---------------------------------------------------------
@@ -253,36 +253,6 @@ def get_planned_periods_for_box(box_id: int) -> List[Dict[str, date]]:
             }
             for r in rows
         ]
-
-
-
-
-    with SessionLocal() as session:
-        overlap = session.execute(
-            text("""
-                SELECT 1 FROM loans
-                WHERE box_id = :bid
-                  AND status IN ('OPEN', 'OVERDUE')
-                  AND (
-                        :new_start <= planned_end_date
-                    AND :new_end   >= planned_start_date
-                  )
-                LIMIT 1
-            """),
-            {"bid": box_id, "new_start": ausgabe, "new_end": rueckgabe}
-        ).first()
-
-        if overlap:
-            raise Exception("Diese Box ist im angegebenen Zeitraum bereits ausgeliehen!")
-
-    return create_loan(
-        box_id=box_id,
-        contact_email=email,
-        planned_start_date=ausgabe,
-        planned_end_date=rueckgabe,
-        created_by_user_id=2,
-    )
-
 
 # ---------------------------------------------------------
 #  Erkannte Objekte für INITIAL / RETURN-Fotos zusammenfassen

@@ -1,4 +1,6 @@
 from dotenv import load_dotenv  # .env laden (für Supabase etc.)
+from sqlalchemy.sql.functions import current_user
+
 load_dotenv()
 
 from datetime import date
@@ -423,7 +425,10 @@ def start_loan():
 
     # === LEIHE ANLEGEN (mit Fehlerbehandlung) ===
     try:
-        loan_id = create_loan_with_validation(existing_box_id, form_data)
+        loan_id = create_loan_with_validation(
+            existing_box_id,
+            form_data,
+            created_by_user_id=session["user_id"],)
     except Exception as e:
         return render_template(
             "new_loan.html",
@@ -462,7 +467,11 @@ def confirm_new_box():
 
     if decision == "yes":
         new_box_id = create_box(box_code)
-        loan_id = create_loan_with_validation(new_box_id, form_data)
+        loan_id = create_loan_with_validation(
+            new_box_id,
+            form_data,
+            created_by_user_id=session["user_id"],
+        )
         return redirect(url_for("upload_photo", loan_id=loan_id))
 
     abort(400, "Ungültige Auswahl.")
@@ -502,14 +511,14 @@ def upload_photo(loan_id: int):
         with SessionLocal() as session:
             result = session.execute(
                 text("""
-                    INSERT INTO photos (loan_id, type, file_path, created_by_user_id)
-                    VALUES (:loan_id, 'INITIAL', :file_path, :user_id)
+                    INSERT INTO photos (loan_id, type, file_path)
+                    VALUES (:loan_id, 'INITIAL', :file_path)
                     RETURNING id
                 """),
                 {
                     "loan_id": loan_id,
                     "file_path": bucket_key,
-                    "user_id": 2,  # TODO: aus Login übernehmen
+
                 }
             )
             photo_id = result.scalar_one()
@@ -595,14 +604,13 @@ def upload_return_photo(loan_id: int):
         with SessionLocal() as session:
             result = session.execute(
                 text("""
-                    INSERT INTO photos (loan_id, type, file_path, created_by_user_id)
-                    VALUES (:loan_id, 'RETURN', :file_path, :user_id)
+                    INSERT INTO photos (loan_id, type, file_path)
+                    VALUES (:loan_id, 'RETURN', :file_path)
                     RETURNING id
                 """),
                 {
                     "loan_id": loan_id,
                     "file_path": bucket_key,
-                    "user_id": 2,  # TODO: aus Login übernehmen
                 }
             )
             photo_id = result.scalar_one()
