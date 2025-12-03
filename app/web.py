@@ -501,55 +501,39 @@ def confirm_new_box():
 
 
 # ---------------------------------------------------
-# Eigene Seite: Box manuell anlegen + QR-Code
+# Eigene Seite: Box anlegen + QR-Code
 # ---------------------------------------------------
-@app.route("/boxes/new", methods=["GET", "POST"])
+
+# @app.route("/boxes/new")
+# @login_required
+# def new_box():
+#     """Aus Kompatibilitätsgründen: leitet auf die Boxen-Übersicht weiter."""
+#     return redirect(url_for("boxes_overview"))
+
+# Neue Übersicht für alle Boxen
+@app.route("/boxes")
 @login_required
-def new_box():
-    """
-    Manuelles Anlegen einer Box – gleiche Logik wie beim Anlegen
-    über 'confirm_new_box': User gibt eine Zahl ein → BOX-###,
-    Format wird geprüft, Box darf noch nicht existieren, dann create_box(box_code).
-    """
-    if request.method == "GET":
-        return render_template(
-            "new_box.html",
-            title="Neue Box anlegen",
-        )
+def boxes_overview():
+    """Übersicht aller Boxen mit optionalem Status und QR-Preview."""
+    with SessionLocal() as session:
+        rows = session.execute(
+            text(
+                """
+                SELECT box_code
+                FROM boxes
+                WHERE is_active = TRUE
+                ORDER BY box_code
+                """
+            )
+        ).mappings().all()
 
-    # POST: Box-Code aus Formular holen
-    box_code_raw = request.form.get("box_code", "").strip()
+    boxes = [dict(r) for r in rows]
 
-    # USER EINGIBT NUR ZAHL (1–3 Stellen), wir ergänzen BOX-XYZ
-    if box_code_raw.isdigit():
-        box_code = f"BOX-{int(box_code_raw):03d}"
-    else:
-        box_code = box_code_raw.upper()
-
-    # FORMAT VALIDIEREN
-    if not validate_box_code(box_code):
-        return render_template(
-            "new_box.html",
-            title="Neue Box anlegen",
-            error="Bitte nur Zahlen eingeben (1 bis 3 Stellen).",
-            box_code=box_code_raw,
-        )
-
-    # EXISTIERT DIE BOX SCHON?
-    existing_box_id = get_box_id_by_code(box_code)
-    if existing_box_id is not None:
-        return render_template(
-            "new_box.html",
-            title="Neue Box anlegen",
-            error="Diese Box existiert bereits.",
-            box_code=box_code_raw,
-        )
-
-    # NEUE BOX ANLEGEN – gleiches Vorgehen wie in confirm_new_box
-    new_box_id = create_box(box_code)
-
-    # Danach auf die QR-Seite gehen
-    return redirect(url_for("box_created", box_id=new_box_id))
+    return render_template(
+        "boxes.html",  # Template zeigt jetzt die Boxen-Übersicht
+        title="Boxen",
+        boxes=boxes,
+    )
 
 @app.route("/boxes/<int:box_id>/created")
 @login_required

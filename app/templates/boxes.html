@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="page-header">
+    <h1 class="page-title">Boxen</h1>
+    <p class="page-subtitle">
+      Übersicht aller Boxen mit aktuellem (optionalem) Status und QR-Code.
+    </p>
+  </div>
+
+  <div class="loans-grid">
+    {% if boxes %}
+      {% for box in boxes %}
+        <div class="loan-card">
+          <div class="loan-header">
+            <div class="loan-id">
+              {{ box.box_code }}
+            </div>
+            {% if box.status %}
+              <div class="loan-status-badge">
+                {{ box.status }}
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="loan-body">
+            <div class="loan-info-row">
+              <span class="loan-label">Box-Code</span>
+              <span class="loan-value">{{ box.box_code }}</span>
+            </div>
+
+            {% if box.status %}
+              <div class="loan-info-row">
+                <span class="loan-label">Status</span>
+                <span class="loan-value">{{ box.status }}</span>
+              </div>
+            {% endif %}
+
+            <div class="loan-info-row">
+              <span class="loan-label">QR-Code</span>
+            </div>
+            <div class="photo-wrapper">
+              <img
+                src="{{ url_for('get_box_qr', box_code=box.box_code) }}"
+                alt="QR-Code für Box {{ box.box_code }}"
+                class="loan-photo"
+              >
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p>Es sind noch keine Boxen angelegt.</p>
+    {% endif %}
+  </div>
+{% endblock %}
