@@ -56,4 +56,13 @@ def upload_initial_photo_for_loan(loan_id: int, file_storage) -> str:
 
     return bucket_key
 
-#seeeyyyuuhh
+# app/services/photos_storage.py
+
+def delete_photo_from_storage(file_path: str) -> None:
+    """
+    Löscht eine Datei im Storage-Bucket anhand ihres Pfads.
+    `file_path` ist derselbe String wie in photos.file_path gespeichert.
+    """
+    print(f"[DEBUG] Supabase: versuche {file_path} zu löschen")
+    resp = supabase.storage.from_(SUPABASE_BUCKET).remove([file_path])
+    print(f"[DEBUG] Supabase remove response für {file_path}: {resp}")

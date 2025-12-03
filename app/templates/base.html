@@ -59,15 +59,59 @@
 
 <!-- Bottom Navigation (nur Mobile) -->
 <nav class="bottom-nav">
-    <a href="{{ url_for('home') }}" class="bottom-nav-item">
-        <span class="bottom-nav-icon">🏠</span>
-        <span class="bottom-nav-label">Übersicht</span>
-    </a>
-    <a href="{{ url_for('new_loan') }}" class="bottom-nav-item">
-        <span class="bottom-nav-icon">➕</span>
-        <span class="bottom-nav-label">Neu</span>
-    </a>
+
+    {% if session.get("user_id") %}
+
+        <!-- Übersicht -->
+        <a href="{{ url_for('home') }}" class="bottom-nav-item">
+            <span class="bottom-nav-icon">🏠</span>
+            <span class="bottom-nav-label">Übersicht</span>
+        </a>
+
+        <!-- Neue Leihe -->
+        <a href="{{ url_for('new_loan') }}" class="bottom-nav-item">
+            <span class="bottom-nav-icon">➕</span>
+            <span class="bottom-nav-label">Neu</span>
+        </a>
+
+        <!-- Passwort ändern -->
+        <a href="{{ url_for('change_password_route') }}" class="bottom-nav-item">
+            <span class="bottom-nav-icon">🔑</span>
+            <span class="bottom-nav-label">Passwort</span>
+        </a>
+
+        {% if session.get("user_role") == "ADMIN" %}
+            <!-- Benutzerverwaltung -->
+            <a href="{{ url_for('user_list') }}" class="bottom-nav-item">
+                <span class="bottom-nav-icon">👥</span>
+                <span class="bottom-nav-label">Benutzer</span>
+            </a>
+
+            <!-- Benutzer anlegen -->
+            <a href="{{ url_for('register') }}" class="bottom-nav-item">
+                <span class="bottom-nav-icon">➕</span>
+                <span class="bottom-nav-label">User anlegen</span>
+            </a>
+        {% endif %}
+
+        <!-- Logout -->
+        <a href="{{ url_for('logout') }}" class="bottom-nav-item">
+            <span class="bottom-nav-icon">🚪</span>
+            <span class="bottom-nav-label">Logout</span>
+        </a>
+
+    {% else %}
+
+        <!-- Nicht eingeloggt -->
+        <a href="{{ url_for('login') }}" class="bottom-nav-item">
+            <span class="bottom-nav-icon">🔐</span>
+            <span class="bottom-nav-label">Login</span>
+        </a>
+
+    {% endif %}
+
 </nav>
+
 
 <!-- Theme Switch Script -->
 <script>

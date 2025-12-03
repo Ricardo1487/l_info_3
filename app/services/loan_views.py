@@ -114,4 +114,3 @@ def sort_loans(loans: list[dict], sort_field: str, sort_dir: str) -> list[dict]:
 
 
 
-
