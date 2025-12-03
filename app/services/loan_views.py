@@ -109,8 +109,36 @@ def sort_loans(loans: list[dict], sort_field: str, sort_dir: str) -> list[dict]:
         # numerisch / Box-Nummer: normale Sortierung
         return sorted(loans, key=key_func, reverse=reverse)
 
+def log_overdue_loans(loans: list[dict]) -> None:
+    """
+    Gibt im Terminal eine Info für alle Leihen aus,
+    deren geplantes Rückgabedatum in der Vergangenheit liegt
+    und die noch nicht abgeschlossen sind.
+    """
+    today = date.today()
 
 
+    overdue_loans = [
+        l for l in loans
+        if l.get("planned_end_date") is not None
+        and l["planned_end_date"] < today
+        and l.get("status") in ("OPEN", "OVERDUE")
+    ]
 
+    # Wenn nichts überfällig ist, still sein
+    if not overdue_loans:
+        return
 
-
+    print("\n" + "=" * 70)
+    print("[OVERDUE CHECK] Es gibt überfällige Leihen:")
+    print(f"Heutiges Datum: {today.isoformat()}")
+    for loan in overdue_loans:
+        box_code = loan.get("box_code", "UNBEKANNT")
+        contact = loan.get("contact_email", "kein Kontakt hinterlegt")
+        loan_id = loan.get("id", "?")
+        end_date = loan.get("planned_end_date")
+        print(
+            f"  - Leih-ID #{loan_id} | Box {box_code} | "
+            f"Kontakt: {contact} | geplante Rückgabe: {end_date}"
+        )
+    print("=" * 70 + "\n")

@@ -34,6 +34,7 @@ from app.services.loan_views import (  # NEU
     compute_loan_stats,
     filter_loans,
     sort_loans,
+    log_overdue_loans,      # <--- NEU
 )
 
 from app.services.loan_status import (
@@ -263,6 +264,9 @@ def home():
 
     # 2) Alle Leihen laden
     all_loans = list_loans()
+
+    # 2b) Überfällige Leihen im Terminal ausgeben
+    log_overdue_loans(all_loans)
 
     # 3) Statistiken berechnen (für die Kacheln)
     stats = compute_loan_stats(all_loans)
