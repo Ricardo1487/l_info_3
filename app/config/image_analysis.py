@@ -97,3 +97,4 @@ def analyze_image_file(file_storage):
         data = {"objects": data}
 
     return data
+

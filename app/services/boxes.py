@@ -64,3 +64,4 @@ def create_box(box_code: Optional[str] = None, description: Optional[str] = None
         session.commit()
 
         return new_id
+
