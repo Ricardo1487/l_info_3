@@ -66,3 +66,16 @@ def delete_photo_from_storage(file_path: str) -> None:
     print(f"[DEBUG] Supabase: versuche {file_path} zu löschen")
     resp = supabase.storage.from_(SUPABASE_BUCKET).remove([file_path])
     print(f"[DEBUG] Supabase remove response für {file_path}: {resp}")
+
+
+def get_public_url(file_path: str) -> Optional[str]:
+    """
+    Gibt eine öffentliche Supabase-URL für ein gespeichertes Bild zurück.
+    """
+    if not file_path:
+        return None
+
+    # Supabase gibt direkt eine URL zurück (STRING)
+    url = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(file_path)
+
+    return url  # einfach zurückgeben, NICHT .get()

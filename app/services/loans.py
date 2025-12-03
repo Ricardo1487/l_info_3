@@ -5,6 +5,10 @@ from typing import List, Dict, Any, Optional
 from sqlalchemy import text
 from app.config.database import SessionLocal
 from app.services.photos_storage import delete_photo_from_storage
+import os
+from app.services.photos_storage import get_public_url
+
+
 
 # ---------------------------------------------------------
 #  Liste aller Leihen abrufen
@@ -35,9 +39,12 @@ def list_loans() -> List[Dict[str, Any]]:
 
 def get_loan_by_id(loan_id: int) -> Optional[Dict[str, Any]]:
     """
-    Holt Details einer einzelnen Leihe.
+    Holt Details einer einzelnen Leihe inkl. Box-Code und öffentlicher INITIAL-Foto-URL.
     """
+    from app.services.photos_storage import get_public_url
+
     with SessionLocal() as session:
+        # Hauptdaten der Leihe abrufen
         row = session.execute(
             text("""
                 SELECT
@@ -50,7 +57,33 @@ def get_loan_by_id(loan_id: int) -> Optional[Dict[str, Any]]:
             {"loan_id": loan_id}
         ).mappings().first()
 
-        return dict(row) if row else None
+        if not row:
+            return None
+
+        loan = dict(row)
+
+        # INITIAL-Foto (file_path)
+        photo_path = session.execute(
+            text("""
+                SELECT file_path
+                FROM photos
+                WHERE loan_id = :loan_id
+                  AND type = 'INITIAL'
+                ORDER BY id ASC
+                LIMIT 1
+            """),
+            {"loan_id": loan_id}
+        ).scalar()
+
+        # Öffentliche URL erzeugen
+        if photo_path:
+            loan["initial_photo"] = get_public_url(photo_path)
+        else:
+            loan["initial_photo"] = None
+
+        return loan
+
+
 
 
 

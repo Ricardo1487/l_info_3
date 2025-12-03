@@ -1108,3 +1108,17 @@ html[data-theme="themeForest"] .filter-button-reset:hover {
     padding: 15px 20px;
     border-radius: 15px;
 }
+.loan-card {
+    position: relative;
+}
+
+.loan-card-overlay-link {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+}
+
+.loan-card-footer a {
+    position: relative;
+    z-index: 2;
+}
