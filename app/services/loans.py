@@ -399,3 +399,24 @@ def delete_loan_if_fully_returned(loan_id: int) -> bool:
         session.commit()
         print(f"[DEBUG] Loan {loan_id} und alle verknüpften Daten wurden gelöscht.")
         return True
+
+
+def get_initial_contents_for_all_loans() -> Dict[int, Dict[str, int]]:
+    with SessionLocal() as session:
+        rows = session.execute(text("""
+            SELECT p.loan_id, d.label, SUM(d.quantity) AS qty
+            FROM photos p
+            JOIN detected_objects d ON d.photo_id = p.id
+            WHERE p.type = 'INITIAL'
+            GROUP BY p.loan_id, d.label
+        """)).mappings().all()
+
+    result: Dict[int, Dict[str, int]] = {}
+
+    for row in rows:
+        loan_id = row["loan_id"]
+        if loan_id not in result:
+            result[loan_id] = {}
+        result[loan_id][row["label"]] = row["qty"]
+
+    return result

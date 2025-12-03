@@ -293,13 +293,12 @@ def home():
             l["planned_end_date_formatted"] = l.get("planned_end_date")
 
     # 5c) Erkannte Inhalte aus dem INITIAL-Foto an jede Leihe hängen
-    with SessionLocal() as session:
-        for l in loans:
-            try:
-                contents = get_detected_objects_for_photo(session, l["id"], "INITIAL")
-            except Exception:
-                contents = {}
-            l["initial_contents"] = contents
+    from app.services.loans import get_initial_contents_for_all_loans
+
+    initial_data = get_initial_contents_for_all_loans()
+
+    for l in loans:
+        l["initial_contents"] = initial_data.get(l["id"], {})
 
     # 6) Template rendern
     return render_template(
@@ -330,21 +329,21 @@ def loan_details(loan_id: int):
     if loan is None:
         abort(404, "Leihe nicht gefunden.")
 
-    # Format dates for display
+    # Datum formatieren
     if isinstance(loan.get("planned_start_date"), date):
         loan["planned_start_date_formatted"] = loan["planned_start_date"].strftime("%d.%m.%Y")
-    else:
-        loan["planned_start_date_formatted"] = loan.get("planned_start_date")
-
     if isinstance(loan.get("planned_end_date"), date):
         loan["planned_end_date_formatted"] = loan["planned_end_date"].strftime("%d.%m.%Y")
-    else:
-        loan["planned_end_date_formatted"] = loan.get("planned_end_date")
+
+    # === NEU: Inhalte aus dem INITIAL-Foto laden ===
+    with SessionLocal() as session:
+        initial_objects = get_detected_objects_for_photo(session, loan_id, "INITIAL")
 
     return render_template(
         "loan_details.html",
         title=f"Leihe {loan_id}",
         loan=loan,
+        initial_objects=initial_objects,
     )
 # ---------------------------------------------------
 # Neue Leihe Formular (Schritt 1 – ohne Foto!)
