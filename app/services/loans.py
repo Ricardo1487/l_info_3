@@ -1,4 +1,4 @@
-# app/Services/loans.py
+<file name=0 path=loans.py># app/Services/loans.py
 
 from datetime import date
 from typing import List, Dict, Any, Optional
@@ -179,10 +179,7 @@ def extend_loan(
 # ---------------------------------------------------------
 #  Leihe als "MISSING_ITEMS" markieren
 # ---------------------------------------------------------
-def mark_missing_items(
-    *,
-    loan_id: int
-) -> None:
+def mark_missing_items(loan_id: int) -> None:
     """
     Setzt den Status auf 'MISSING_ITEMS',
     wenn nach der Rückgabe Teile fehlen.
@@ -398,4 +395,4 @@ def delete_loan_if_fully_returned(loan_id: int) -> bool:
 
         session.commit()
         print(f"[DEBUG] Loan {loan_id} und alle verknüpften Daten wurden gelöscht.")
-        return True
+        return True</file>

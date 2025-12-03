@@ -48,9 +48,12 @@ def get_box_id_by_code(box_code: str) -> Optional[int]:
         return row["id"] if row else None
 
 def create_box(box_code: Optional[str] = None, description: Optional[str] = None) -> int:
-    """Erstellt eine Box mit Format BOX-###."""
-    with SessionLocal() as session:
+    """Erstellt eine Box mit Format BOX-###.
 
+    Wenn der angegebene box_code bereits existiert, wird die vorhandene
+    Box-ID zurückgegeben statt einen UNIQUE-Fehler zu werfen.
+    """
+    with SessionLocal() as session:
         # Automatisch generieren (BOX-001 …)
         if not box_code or box_code.strip() == "":
             row = session.execute(
@@ -64,18 +67,36 @@ def create_box(box_code: Optional[str] = None, description: Optional[str] = None
         if not validate_box_code(box_code):
             raise ValueError("Box-Code muss Format BOX-### haben!")
 
+        # Prüfen, ob Box mit diesem Code bereits existiert
+        existing = session.execute(
+            text(
+                """
+                SELECT id
+                FROM boxes
+                WHERE box_code = :code
+                LIMIT 1
+                """
+            ),
+            {"code": box_code},
+        ).mappings().first()
+
+        if existing:
+            return existing["id"]
+
+        # Neue Box anlegen
         qr_payload = build_qr_payload(box_code)
 
         result = session.execute(
-            text("""
+            text(
+                """
                 INSERT INTO boxes (box_code, qr_payload, is_active)
                 VALUES (:code, :qr_payload, TRUE)
                 RETURNING id
-            """),
+                """
+            ),
             {"code": box_code, "qr_payload": qr_payload},
         )
         new_id = result.scalar_one()
         session.commit()
 
         return new_id
-
