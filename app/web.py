@@ -339,15 +339,30 @@ def loan_details(loan_id: int):
     if isinstance(loan.get("planned_end_date"), date):
         loan["planned_end_date_formatted"] = loan["planned_end_date"].strftime("%d.%m.%Y")
 
-    # === NEU: Inhalte aus dem INITIAL-Foto laden ===
+    # Inhalte laden
     with SessionLocal() as session:
         initial_objects = get_detected_objects_for_photo(session, loan_id, "INITIAL")
+        return_objects = get_detected_objects_for_photo(session, loan_id, "RETURN")
+
+    # Fallbacks, falls nichts gefunden wurde
+    initial_objects = initial_objects or {}
+    return_objects = return_objects or {}
+
+    # Fehlende Gegenstände berechnen – **rein aus der DB**
+    missing_objects = compare_object_sets(initial_objects, return_objects)
+
+    # Debug-Ausgabe, um zu sehen was passiert
+    print("DEBUG loan_details INITIAL:", initial_objects)
+    print("DEBUG loan_details RETURN:", return_objects)
+    print("DEBUG loan_details MISSING:", missing_objects)
 
     return render_template(
         "loan_details.html",
         title=f"Leihe {loan_id}",
         loan=loan,
         initial_objects=initial_objects,
+        return_objects=return_objects,
+        missing_objects=missing_objects,
     )
 # ---------------------------------------------------
 # Neue Leihe Formular (Schritt 1 – ohne Foto!)

@@ -1084,6 +1084,8 @@ html[data-theme="themeForest"] .filter-button-reset:hover {
     margin-bottom: 12px;
     font-size: 1.2rem;
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
 }
 
 .content-box ul {
@@ -1092,6 +1094,7 @@ html[data-theme="themeForest"] .filter-button-reset:hover {
 
 .content-box li {
     margin-bottom: 6px;
+    font-weight: 400;
 }
 
 .content-columns {

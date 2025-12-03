@@ -49,7 +49,7 @@
         <!-- INITIAL -->
         <div class="content-box">
             <h3 class="content-title">
-                <span style="color:#2ecc71;">●</span> INITIAL
+                <span style="color:#2ecc71;">●</span> AUSGABE
             </h3>
 
             {% if initial_objects %}
@@ -63,15 +63,16 @@
             {% endif %}
         </div>
 
+
         <!-- RETURN -->
         <div class="content-box">
             <h3 class="content-title">
-                <span style="color:#3498db;">●</span> RETURN
+                <span style="color:#3498db;">●</span> RÜCKGABE
             </h3>
 
-            {% if returned_objects %}
+            {% if return_objects %}
                 <ul>
-                    {% for label, qty in returned_objects.items() %}
+                    {% for label, qty in return_objects.items() %}
                         <li>{{ label }}: {{ qty }}</li>
                     {% endfor %}
                 </ul>
@@ -83,13 +84,13 @@
         <!-- MISSING -->
         <div class="content-box">
             <h3 class="content-title">
-                <span style="color:#e74c3c;">●</span> Fehlend
+                <span style="color:#e74c3c;">●</span> FEHLENDE ITEMS
             </h3>
 
             {% if missing_objects %}
                 <ul>
                     {% for label, qty in missing_objects.items() %}
-                        <li><strong>{{ label }}</strong>: {{ qty }} fehlt</li>
+                        <li>{{ label }}: {{ qty }} </li>
                     {% endfor %}
                 </ul>
             {% else %}
