@@ -28,7 +28,7 @@
         {% if session.get("user_id") %}
             <a href="{{ url_for('home') }}" class="nav-link">Übersicht</a>
             <a href="{{ url_for('new_loan') }}" class="nav-link nav-link-primary">Neue Leihe</a>
-            <a href="{{ url_for('boxes') }}" class="nav-link">Neue Box</a>
+            <a href="{{ url_for('boxes_overview') }}" class="nav-link">Neue Box</a>
             <a href="{{ url_for('change_password_route') }}" class="nav-link">Passwort ändern</a>
 
             {% if session.get("user_role") == "ADMIN" %}
