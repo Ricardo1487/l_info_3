@@ -217,10 +217,7 @@ def extend_loan(
 # ---------------------------------------------------------
 #  Leihe als "MISSING_ITEMS" markieren
 # ---------------------------------------------------------
-def mark_missing_items(
-    *,
-    loan_id: int
-) -> None:
+def mark_missing_items(loan_id: int) -> None:
     """
     Setzt den Status auf 'MISSING_ITEMS',
     wenn nach der Rückgabe Teile fehlen.
