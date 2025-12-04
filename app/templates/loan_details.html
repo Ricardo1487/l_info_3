@@ -39,6 +39,67 @@
 
     </div>
 
+    <!-- ============================= -->
+    <!--   VERTIKALE INHALTSANZEIGE    -->
+    <!-- ============================= -->
+    <h2 class="section-title">Inhalt der Box</h2>
+
+    <div class="content-columns">
+
+        <!-- INITIAL -->
+        <div class="content-box">
+            <h3 class="content-title">
+                <span style="color:#2ecc71;">●</span> AUSGABE
+            </h3>
+
+            {% if initial_objects %}
+                <ul>
+                    {% for label, qty in initial_objects.items() %}
+                        <li>{{ label }}: {{ qty }}</li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>Keine Daten vorhanden.</p>
+            {% endif %}
+        </div>
+
+
+        <!-- RETURN -->
+        <div class="content-box">
+            <h3 class="content-title">
+                <span style="color:#3498db;">●</span> RÜCKGABE
+            </h3>
+
+            {% if return_objects %}
+                <ul>
+                    {% for label, qty in return_objects.items() %}
+                        <li>{{ label }}: {{ qty }}</li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>Noch kein Rückgabefoto.</p>
+            {% endif %}
+        </div>
+
+        <!-- MISSING -->
+        <div class="content-box">
+            <h3 class="content-title">
+                <span style="color:#e74c3c;">●</span> FEHLENDE ITEMS
+            </h3>
+
+            {% if missing_objects %}
+                <ul>
+                    {% for label, qty in missing_objects.items() %}
+                        <li>{{ label }}: {{ qty }} </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>Keine fehlenden Gegenstände.</p>
+            {% endif %}
+        </div>
+
+    </div>
+
     <!-- Foto -->
     {% if loan.initial_photo %}
     <h2 class="section-title">Erstes Foto</h2>
@@ -55,6 +116,7 @@
             box.classList.toggle('open');
         }
     </script>
+
     {% else %}
     <h2 class="section-title">Erstes Foto</h2>
     <p class="no-photo-hint">Kein Foto vorhanden.</p>

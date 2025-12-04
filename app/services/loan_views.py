@@ -1,18 +1,30 @@
 # app/services/loan_views.py
 from datetime import date
 from typing import Optional
+from datetime import timedelta
 
 
 def compute_loan_stats(loans: list[dict]) -> dict:
     """
     Berechnet einfache Statistiken für eine Liste von Leihen.
     """
+    today = date.today()
     return {
         "total": len(loans),
         "open": sum(1 for l in loans if l.get("status") == "OPEN"),
         "returned": sum(1 for l in loans if l.get("status") == "RETURNED"),
         "missing": sum(1 for l in loans if l.get("status") == "MISSING_ITEMS"),
         "overdue": sum(1 for l in loans if l.get("status") == "OVERDUE"),
+        "upcoming": sum(
+            1 for l in loans
+            if l.get("planned_start_date") and l["planned_start_date"] > today
+        ),
+        "recent": sum(
+            1 for l in loans
+            if l.get("status") == "RETURNED"
+            and l.get("actual_end_date")
+            and (today - l["actual_end_date"]).days <= 7
+        )
     }
 
 
@@ -30,6 +42,24 @@ def filter_loans(loans: list[dict], contact: Optional[str], status: Optional[str
         ]
 
     if status:
+        if status == "UPCOMING":
+            today = date.today()
+            result = [
+                l for l in result
+                if l.get("planned_start_date") and l["planned_start_date"] > today
+            ]
+            return result
+
+        if status == "RECENT":
+            today = date.today()
+            result = [
+                l for l in result
+                if l.get("status") == "RETURNED"
+                and l.get("actual_end_date")
+                and (today - l["actual_end_date"]).days <= 7
+            ]
+            return result
+
         result = [l for l in result if l.get("status") == status]
 
     return result
@@ -109,8 +139,36 @@ def sort_loans(loans: list[dict], sort_field: str, sort_dir: str) -> list[dict]:
         # numerisch / Box-Nummer: normale Sortierung
         return sorted(loans, key=key_func, reverse=reverse)
 
+def log_overdue_loans(loans: list[dict]) -> None:
+    """
+    Gibt im Terminal eine Info für alle Leihen aus,
+    deren geplantes Rückgabedatum in der Vergangenheit liegt
+    und die noch nicht abgeschlossen sind.
+    """
+    today = date.today()
 
 
+    overdue_loans = [
+        l for l in loans
+        if l.get("planned_end_date") is not None
+        and l["planned_end_date"] < today
+        and l.get("status") in ("OPEN", "OVERDUE")
+    ]
 
+    # Wenn nichts überfällig ist, still sein
+    if not overdue_loans:
+        return
 
-
+    print("\n" + "=" * 70)
+    print("[OVERDUE CHECK] Es gibt überfällige Leihen:")
+    print(f"Heutiges Datum: {today.isoformat()}")
+    for loan in overdue_loans:
+        box_code = loan.get("box_code", "UNBEKANNT")
+        contact = loan.get("contact_email", "kein Kontakt hinterlegt")
+        loan_id = loan.get("id", "?")
+        end_date = loan.get("planned_end_date")
+        print(
+            f"  - Leih-ID #{loan_id} | Box {box_code} | "
+            f"Kontakt: {contact} | geplante Rückgabe: {end_date}"
+        )
+    print("=" * 70 + "\n")

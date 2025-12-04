@@ -1,10 +1,14 @@
-<file name=0 path=loans.py># app/Services/loans.py
+# app/Services/loans.py
 
 from datetime import date
 from typing import List, Dict, Any, Optional
 from sqlalchemy import text
 from app.config.database import SessionLocal
 from app.services.photos_storage import delete_photo_from_storage
+import os
+from app.services.photos_storage import get_public_url
+
+
 
 # ---------------------------------------------------------
 #  Liste aller Leihen abrufen
@@ -27,7 +31,7 @@ def list_loans() -> List[Dict[str, Any]]:
                 b.box_code
             FROM loans l
             JOIN boxes b ON l.box_id = b.id
-            WHERE l.status IN ('OPEN', 'OVERDUE', 'MISSING_ITEMS')
+            WHERE l.status IN ('OPEN', 'OVERDUE', 'MISSING_ITEMS', 'RETURNED')
             ORDER BY l.planned_end_date ASC
         """)).mappings().all()
 
@@ -35,9 +39,12 @@ def list_loans() -> List[Dict[str, Any]]:
 
 def get_loan_by_id(loan_id: int) -> Optional[Dict[str, Any]]:
     """
-    Holt Details einer einzelnen Leihe.
+    Holt Details einer einzelnen Leihe inkl. Box-Code und öffentlicher INITIAL-Foto-URL.
     """
+    from app.services.photos_storage import get_public_url
+
     with SessionLocal() as session:
+        # Hauptdaten der Leihe abrufen
         row = session.execute(
             text("""
                 SELECT
@@ -50,7 +57,33 @@ def get_loan_by_id(loan_id: int) -> Optional[Dict[str, Any]]:
             {"loan_id": loan_id}
         ).mappings().first()
 
-        return dict(row) if row else None
+        if not row:
+            return None
+
+        loan = dict(row)
+
+        # INITIAL-Foto (file_path)
+        photo_path = session.execute(
+            text("""
+                SELECT file_path
+                FROM photos
+                WHERE loan_id = :loan_id
+                  AND type = 'INITIAL'
+                ORDER BY id ASC
+                LIMIT 1
+            """),
+            {"loan_id": loan_id}
+        ).scalar()
+
+        # Öffentliche URL erzeugen
+        if photo_path:
+            loan["initial_photo"] = get_public_url(photo_path)
+        else:
+            loan["initial_photo"] = None
+
+        return loan
+
+
 
 
 
@@ -395,4 +428,25 @@ def delete_loan_if_fully_returned(loan_id: int) -> bool:
 
         session.commit()
         print(f"[DEBUG] Loan {loan_id} und alle verknüpften Daten wurden gelöscht.")
-        return True</file>
+        return True
+
+
+def get_initial_contents_for_all_loans() -> Dict[int, Dict[str, int]]:
+    with SessionLocal() as session:
+        rows = session.execute(text("""
+            SELECT p.loan_id, d.label, SUM(d.quantity) AS qty
+            FROM photos p
+            JOIN detected_objects d ON d.photo_id = p.id
+            WHERE p.type = 'INITIAL'
+            GROUP BY p.loan_id, d.label
+        """)).mappings().all()
+
+    result: Dict[int, Dict[str, int]] = {}
+
+    for row in rows:
+        loan_id = row["loan_id"]
+        if loan_id not in result:
+            result[loan_id] = {}
+        result[loan_id][row["label"]] = row["qty"]
+
+    return result

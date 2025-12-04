@@ -41,10 +41,25 @@
       </div>
 
       <div class="button-row">
-        <button type="button" class="btn-primary full-width" onclick="window.print()">
+        <button type="button" class="btn-primary full-width" onclick="printQR()">
           QR-Code drucken
         </button>
       </div>
     </div>
   </div>
+
+  <iframe id="qr-frame" style="display:none;"></iframe>
+
+  <script>
+    function printQR() {
+      const frame = document.getElementById("qr-frame");
+      const qrUrl = "{{ url_for('get_box_qr', box_code=box.box_code) }}";
+
+      frame.src = qrUrl;
+      frame.onload = () => {
+        frame.contentWindow.focus();
+        frame.contentWindow.print();
+      };
+    }
+  </script>
 {% endblock %}

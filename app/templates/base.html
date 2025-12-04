@@ -32,8 +32,7 @@
             <a href="{{ url_for('change_password_route') }}" class="nav-link">Passwort ändern</a>
 
             {% if session.get("user_role") == "ADMIN" %}
-                <a href="{{ url_for('user_list') }}" class="nav-link">Benutzer</a>
-                <a href="{{ url_for('register') }}" class="nav-link">Benutzer anlegen</a>
+                <a href="{{ url_for('user_list') }}" class="nav-link">Benutzer Übersicht</a>
             {% endif %}
 
             <span class="nav-link">
@@ -54,6 +53,18 @@
 
 <!-- Hauptinhalt -->
 <main class="app-main">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-container">
+          {% for category, message in messages %}
+            <div class="alert-{{ category }}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
     {% block content %}{% endblock %}
 </main>
 
@@ -87,11 +98,6 @@
                 <span class="bottom-nav-label">Benutzer</span>
             </a>
 
-            <!-- Benutzer anlegen -->
-            <a href="{{ url_for('register') }}" class="bottom-nav-item">
-                <span class="bottom-nav-icon">➕</span>
-                <span class="bottom-nav-label">User anlegen</span>
-            </a>
         {% endif %}
 
         <!-- Logout -->

@@ -34,6 +34,7 @@ from app.services.loan_views import (  # NEU
     compute_loan_stats,
     filter_loans,
     sort_loans,
+    log_overdue_loans,      # <--- NEU
 )
 
 from app.services.loan_status import (
@@ -52,6 +53,7 @@ from app.services.boxes import (
 # photos_storage importieren – neue Funktion für direkten Upload
 from app.services.photos_storage import (
     upload_initial_photo_for_loan,
+    upload_return_photo_for_loan
 )
 # user services importieren
 from app.services.users import (
@@ -264,6 +266,9 @@ def home():
     # 2) Alle Leihen laden
     all_loans = list_loans()
 
+    # 2b) Überfällige Leihen im Terminal ausgeben
+    log_overdue_loans(all_loans)
+
     # 3) Statistiken berechnen (für die Kacheln)
     stats = compute_loan_stats(all_loans)
 
@@ -293,13 +298,12 @@ def home():
             l["planned_end_date_formatted"] = l.get("planned_end_date")
 
     # 5c) Erkannte Inhalte aus dem INITIAL-Foto an jede Leihe hängen
-    with SessionLocal() as session:
-        for l in loans:
-            try:
-                contents = get_detected_objects_for_photo(session, l["id"], "INITIAL")
-            except Exception:
-                contents = {}
-            l["initial_contents"] = contents
+    from app.services.loans import get_initial_contents_for_all_loans
+
+    initial_data = get_initial_contents_for_all_loans()
+
+    for l in loans:
+        l["initial_contents"] = initial_data.get(l["id"], {})
 
     # 6) Template rendern
     return render_template(
@@ -318,6 +322,7 @@ def home():
         returned_count=stats["returned"],
         missing_count=stats["missing"],
         overdue_count=stats["overdue"],
+        date=date,
     )
 
 # ---------------------------------------------------
@@ -330,21 +335,36 @@ def loan_details(loan_id: int):
     if loan is None:
         abort(404, "Leihe nicht gefunden.")
 
-    # Format dates for display
+    # Datum formatieren
     if isinstance(loan.get("planned_start_date"), date):
         loan["planned_start_date_formatted"] = loan["planned_start_date"].strftime("%d.%m.%Y")
-    else:
-        loan["planned_start_date_formatted"] = loan.get("planned_start_date")
-
     if isinstance(loan.get("planned_end_date"), date):
         loan["planned_end_date_formatted"] = loan["planned_end_date"].strftime("%d.%m.%Y")
-    else:
-        loan["planned_end_date_formatted"] = loan.get("planned_end_date")
+
+    # Inhalte laden
+    with SessionLocal() as session:
+        initial_objects = get_detected_objects_for_photo(session, loan_id, "INITIAL")
+        return_objects = get_detected_objects_for_photo(session, loan_id, "RETURN")
+
+    # Fallbacks, falls nichts gefunden wurde
+    initial_objects = initial_objects or {}
+    return_objects = return_objects or {}
+
+    # Fehlende Gegenstände berechnen – **rein aus der DB**
+    missing_objects = compare_object_sets(initial_objects, return_objects)
+
+    # Debug-Ausgabe, um zu sehen was passiert
+    print("DEBUG loan_details INITIAL:", initial_objects)
+    print("DEBUG loan_details RETURN:", return_objects)
+    print("DEBUG loan_details MISSING:", missing_objects)
 
     return render_template(
         "loan_details.html",
         title=f"Leihe {loan_id}",
         loan=loan,
+        initial_objects=initial_objects,
+        return_objects=return_objects,
+        missing_objects=missing_objects,
     )
 # ---------------------------------------------------
 # Neue Leihe Formular (Schritt 1 – ohne Foto!)
@@ -658,6 +678,29 @@ def upload_photo(loan_id: int):
     if loan is None:
         abort(404, "Leihe nicht gefunden.")
 
+    # 🔒 Check: Gibt es bereits ein INITIAL-Foto für diese Leihe?
+    with SessionLocal() as session:
+        existing_initial = session.execute(
+            text(
+                """
+                SELECT id
+                FROM photos
+                WHERE loan_id = :loan_id
+                  AND type = 'INITIAL'
+                LIMIT 1
+                """
+            ),
+            {"loan_id": loan_id},
+        ).mappings().first()
+
+    if existing_initial:
+        flash(
+            "Für diese Leihe existiert bereits ein Initial-Foto. "
+            "Du kannst es unter „Foto & Inhalt prüfen“ ansehen.",
+            "error",
+        )
+        return redirect(url_for("review_initial_contents", loan_id=loan_id))
+
     if request.method == "POST":
         photo = request.files.get("photo")
         if not photo:
@@ -674,7 +717,8 @@ def upload_photo(loan_id: int):
             print("Fehler bei der Bildanalyse:", e)
             detected_objects = []
 
-        # 1) Foto nach Supabase hochladen (direkt unter loans/<id>/...)
+        # 1) Foto nach Supabase hochladen
+        #    (nutzt deine neue Upload-Logik in photos_storage)
         bucket_key = upload_initial_photo_for_loan(loan_id, photo)
 
         # 2) Foto-Eintrag in der DB (photos-Tabelle)
@@ -688,7 +732,6 @@ def upload_photo(loan_id: int):
                 {
                     "loan_id": loan_id,
                     "file_path": bucket_key,
-
                 }
             )
             photo_id = result.scalar_one()
@@ -717,8 +760,6 @@ def upload_photo(loan_id: int):
         title="Foto aufnehmen",
         loan=loan,
     )
-
-
 # ---------------------------------------------------
 # Rückgabe
 # ---------------------------------------------------
@@ -752,6 +793,30 @@ def upload_return_photo(loan_id: int):
     if loan is None:
         abort(404, "Leihe nicht gefunden.")
 
+    # 🔒 Check: gibt es bereits ein RETURN-Foto für diese Leihe?
+    with SessionLocal() as session:
+        existing_return = session.execute(
+            text(
+                """
+                SELECT id
+                FROM photos
+                WHERE loan_id = :loan_id
+                  AND type = 'RETURN'
+                LIMIT 1
+                """
+            ),
+            {"loan_id": loan_id},
+        ).mappings().first()
+
+    if existing_return:
+        flash(
+            "Für diese Leihe existiert bereits ein Rückgabefoto. "
+            "Du kannst die Rückgabe unter „Rückgabe prüfen“ einsehen.",
+            "error",
+        )
+        return redirect(url_for("review_return_contents", loan_id=loan_id))
+
+    # ⬇️ Ab hier nur Fälle ohne RETURN-Foto
     if request.method == "POST":
         photo = request.files.get("photo")
         if not photo:
@@ -767,8 +832,8 @@ def upload_return_photo(loan_id: int):
             print("Fehler bei der Rückgabe-Bildanalyse:", e)
             detected_objects = []
 
-        # Foto nach Supabase hochladen (wir verwenden die gleiche Helper-Funktion)
-        bucket_key = upload_initial_photo_for_loan(loan_id, photo)
+        # Foto nach Supabase hochladen (dedizierter RETURN-Helper)
+        bucket_key = upload_return_photo_for_loan(loan_id, photo)
 
         # Foto-Eintrag + erkannte Objekte als RETURN speichern
         with SessionLocal() as session:
@@ -804,13 +869,12 @@ def upload_return_photo(loan_id: int):
         # Nach dem Upload/Analyse zur Rückgabe-Review-Seite
         return redirect(url_for("review_return_contents", loan_id=loan_id))
 
-    # GET: Formular zum Rückgabe-Foto hochladen anzeigen (wir nutzen das existierende Template)
+    # GET: Formular zum Rückgabe-Foto hochladen anzeigen
     return render_template(
         "upload_photo.html",
         title="Rückgabe-Foto aufnehmen",
         loan=loan,
     )
-
 
 # ---------------------------------------------------
 # Leihe verlängern
@@ -997,7 +1061,17 @@ def review_return_contents(loan_id: int):
                         closed_by_user_id=2,  # TODO: session["user_id"]
                     )
 
-                    delete_loan_if_fully_returned(loan_id)
+                    # Nur löschen, wenn Rückgabedatum älter als 7 Tage ist
+                    with SessionLocal() as delay_session:
+                        row = delay_session.execute(
+                            text("SELECT actual_end_date FROM loans WHERE id = :id"),
+                            {"id": loan_id}
+                        ).mappings().first()
+
+                        if row and row["actual_end_date"]:
+                            age_days = (today - row["actual_end_date"]).days
+                            if age_days >= 7:
+                                delete_loan_if_fully_returned(loan_id)
             except Exception as e:
                 print("Fehler beim Markieren/Löschen der Leihe:", e)
 
