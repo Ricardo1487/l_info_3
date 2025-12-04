@@ -64,7 +64,7 @@ def get_loan_by_id(loan_id: int) -> Optional[Dict[str, Any]]:
         loan = dict(row)
 
         # INITIAL-Foto (file_path)
-        photo_path = session.execute(
+        init_photo_path = session.execute(
             text("""
                 SELECT file_path
                 FROM photos
@@ -76,11 +76,29 @@ def get_loan_by_id(loan_id: int) -> Optional[Dict[str, Any]]:
             {"loan_id": loan_id}
         ).scalar()
 
+        return_photo_path = session.execute(
+            text(
+                """
+                SELECT file_path
+                FROM photos
+                WHERE loan_id = :loan_id AND type = 'RETURN'
+                ORDER BY id DESC
+                LIMIT 1
+                """
+            ),
+            {"loan_id": loan_id},
+        ).scalar()
+
         # Öffentliche URL erzeugen
-        if photo_path:
-            loan["initial_photo"] = get_public_url(photo_path)
+        if init_photo_path:
+            loan["initial_photo"] = get_public_url(init_photo_path)
         else:
             loan["initial_photo"] = None
+
+        if return_photo_path:
+            loan["return_photo"] = get_public_url(return_photo_path)
+        else:
+            loan["return_photo"] = None
 
         return loan
 

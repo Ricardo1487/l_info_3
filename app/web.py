@@ -1026,6 +1026,33 @@ def review_initial_contents(loan_id: int):
                         },
                     )
 
+            # Handle new objects added by the user
+            # Get all new object labels and quantities (can be multiple)
+            new_labels = request.form.getlist("new_object_label")
+            new_quantities = request.form.getlist("new_object_quantity")
+            
+            for i, new_label in enumerate(new_labels):
+                new_label = new_label.strip()
+                if new_label:
+                    try:
+                        new_quantity = int(new_quantities[i]) if i < len(new_quantities) else 1
+                    except (ValueError, IndexError):
+                        new_quantity = 1
+
+                    session.execute(
+                        text(
+                            """
+                            INSERT INTO detected_objects (photo_id, label, quantity, confidence, is_manually_edited)
+                            VALUES (:photo_id, :label, :quantity, NULL, true)
+                            """
+                        ),
+                        {
+                            "photo_id": photo_id,
+                            "label": new_label,
+                            "quantity": new_quantity,
+                        },
+                    )
+
             session.commit()
             return redirect(url_for("home"))
 
@@ -1087,8 +1114,124 @@ def review_return_contents(loan_id: int):
             {"loan_id": loan_id},
         ).mappings().first()
 
+        if request.method == "POST":
+            # Get the RETURN photo to find its ID
+            return_photo_row = session.execute(
+                text(
+                    """
+                    SELECT id
+                    FROM photos
+                    WHERE loan_id = :loan_id AND type = 'RETURN'
+                    ORDER BY id DESC
+                    LIMIT 1
+                    """
+                ),
+                {"loan_id": loan_id},
+            ).mappings().first()
+
+            if return_photo_row:
+                photo_id = return_photo_row["id"]
+
+                # Handle editing existing objects
+                obj_rows = session.execute(
+                    text(
+                        """
+                        SELECT id
+                        FROM detected_objects
+                        WHERE photo_id = :photo_id
+                        """
+                    ),
+                    {"photo_id": photo_id},
+                ).mappings().all()
+
+                for row in obj_rows:
+                    obj_id = row["id"]
+                    label = request.form.get(f"label_{obj_id}")
+                    quantity_raw = request.form.get(f"quantity_{obj_id}")
+                    delete_flag = request.form.get(f"delete_{obj_id}") == "on"
+
+                    if delete_flag:
+                        session.execute(
+                            text(
+                                """
+                                DELETE FROM detected_objects
+                                WHERE id = :id
+                                """
+                            ),
+                            {"id": obj_id},
+                        )
+                    else:
+                        try:
+                            quantity = int(quantity_raw) if quantity_raw else 1
+                        except ValueError:
+                            quantity = 1
+
+                        session.execute(
+                            text(
+                                """
+                                UPDATE detected_objects
+                                SET label = :label,
+                                    quantity = :quantity,
+                                    is_manually_edited = true
+                                WHERE id = :id
+                                """
+                            ),
+                            {
+                                "label": label,
+                                "quantity": quantity,
+                                "id": obj_id,
+                            },
+                        )
+
+                # Handle new objects added by the user
+                new_labels = request.form.getlist("new_object_label")
+                new_quantities = request.form.getlist("new_object_quantity")
+                
+                for i, new_label in enumerate(new_labels):
+                    new_label = new_label.strip()
+                    if new_label:
+                        try:
+                            new_quantity = int(new_quantities[i]) if i < len(new_quantities) else 1
+                        except (ValueError, IndexError):
+                            new_quantity = 1
+
+                        session.execute(
+                            text(
+                                """
+                                INSERT INTO detected_objects (photo_id, label, quantity, confidence, is_manually_edited)
+                                VALUES (:photo_id, :label, :quantity, NULL, true)
+                                """
+                            ),
+                            {
+                                "photo_id": photo_id,
+                                "label": new_label,
+                                "quantity": new_quantity,
+                            },
+                        )
+
+            session.commit()
+
+        print(initial_photo)
+        print(return_photo)
         initial_objects = get_detected_objects_for_photo(session, loan_id, "INITIAL")
         returned_objects = get_detected_objects_for_photo(session, loan_id, "RETURN")
+        
+        # Get list of return objects for editing in template
+        returned_objects_list = session.execute(
+            text(
+                """
+                SELECT id, label, quantity, confidence, is_manually_edited
+                FROM detected_objects
+                WHERE photo_id IN (
+                    SELECT id FROM photos
+                    WHERE loan_id = :loan_id AND type = 'RETURN'
+                )
+                ORDER BY id
+                """
+            ),
+            {"loan_id": loan_id},
+        ).mappings().all()
+        
         missing_objects = compare_object_sets(initial_objects, returned_objects)
 
         if request.method == "POST":
@@ -1135,6 +1278,7 @@ def review_return_contents(loan_id: int):
         return_photo_path=return_photo["file_path"] if return_photo else None,
         initial_objects=initial_objects,
         returned_objects=returned_objects,
+        returned_objects_list=returned_objects_list,
         missing_objects=missing_objects,
     )
 
