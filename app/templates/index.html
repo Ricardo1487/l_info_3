@@ -11,6 +11,8 @@
 
     <!-- Statistiken oben -->
     <section class="stats-grid">
+
+        <!-- Gesamt -->
         <a href="{{ url_for('home', status='') }}"
            class="stat-card stat-total {{ 'active-stat' if not current_status else '' }}">
             <span class="stat-label">Gesamt</span>
@@ -19,6 +21,7 @@
             {% if not current_status %}<span class="stat-check">✔</span>{% endif %}
         </a>
 
+        <!-- Offen -->
         <a href="{{ url_for('home', status='OPEN') }}"
            class="stat-card stat-open {{ 'active-stat' if current_status == 'OPEN' else '' }}">
             <span class="stat-label">Offen</span>
@@ -27,6 +30,7 @@
             {% if current_status == 'OPEN' %}<span class="stat-check">✔</span>{% endif %}
         </a>
 
+        <!-- Überfällig -->
         <a href="{{ url_for('home', status='OVERDUE') }}"
            class="stat-card stat-overdue {{ 'active-stat' if current_status == 'OVERDUE' else '' }}">
             <span class="stat-label">Überfällig</span>
@@ -35,6 +39,7 @@
             {% if current_status == 'OVERDUE' %}<span class="stat-check">✔</span>{% endif %}
         </a>
 
+        <!-- Fehlende Items -->
         <a href="{{ url_for('home', status='MISSING_ITEMS') }}"
            class="stat-card stat-missing {{ 'active-stat' if current_status == 'MISSING_ITEMS' else '' }}">
             <span class="stat-label">Fehlende Teile</span>
@@ -42,6 +47,25 @@
             <span class="stat-desc">MISSING_ITEMS</span>
             {% if current_status == 'MISSING_ITEMS' %}<span class="stat-check">✔</span>{% endif %}
         </a>
+
+        <!-- UPCOMING -->
+        <a href="{{ url_for('home', status='UPCOMING') }}"
+           class="stat-card stat-upcoming {{ 'active-stat' if current_status == 'UPCOMING' else '' }}">
+            <span class="stat-label">Anstehend</span>
+            <span class="stat-value">{{ upcoming_count }}</span>
+            <span class="stat-desc">Bevorstehende Leihen</span>
+            {% if current_status == 'UPCOMING' %}<span class="stat-check">✔</span>{% endif %}
+        </a>
+
+        <!-- RECENT -->
+        <a href="{{ url_for('home', status='RECENT') }}"
+           class="stat-card stat-recent {{ 'active-stat' if current_status == 'RECENT' else '' }}">
+            <span class="stat-label">Zuletzt zurückgegeben</span>
+            <span class="stat-value">{{ recent }}</span>
+            <span class="stat-desc">Rückgaben letzte 7 Tage</span>
+            {% if current_status == 'RECENT' %}<span class="stat-check">✔</span>{% endif %}
+        </a>
+
     </section>
 
 
@@ -77,7 +101,7 @@
                        placeholder="E-Mail der leihenden Person" value="{{ current_contact or '' }}">
             </div>
 
-            <!-- Buttonleiste -->
+            <!-- Buttons -->
             <div class="filter-actions">
                 <button type="submit" class="filter-button-primary">Anwenden</button>
                 <a href="{{ url_for('home') }}" class="filter-button-reset">Zurücksetzen</a>
@@ -91,7 +115,6 @@
         {% for loan in loans %}
         <article class="loan-card">
 
-            <!-- Die gesamte Karte ist klickbar -->
             <a href="{{ url_for('loan_details', loan_id=loan.id) }}" class="loan-card-overlay-link"></a>
 
             <header class="loan-card-header">
@@ -99,8 +122,15 @@
                     <div class="loan-box-code">{{ loan.box_code }}</div>
                 </div>
 
-                <span class="status-pill status-{{ loan.status|lower }}">
-                    {{ loan.status|lower|replace("_", " ") }}
+                {% set today = date.today() %}
+                {% if loan.planned_start_date and loan.planned_start_date > today %}
+                    {% set display_status = "UPCOMING" %}
+                {% else %}
+                    {% set display_status = loan.status %}
+                {% endif %}
+
+                <span class="status-pill status-{{ display_status|lower }}">
+                    {{ display_status|lower|replace("_", " ") }}
                 </span>
             </header>
 

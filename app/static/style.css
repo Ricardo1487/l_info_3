@@ -321,6 +321,8 @@ html[data-theme="themeForest"] .stat-card {
 .stat-open    { border-left: 3px solid var(--success); }
 .stat-overdue { border-left: 3px solid var(--warning); }
 .stat-missing { border-left: 3px solid var(--danger); }
+.stat-upcoming { border-left: 3px solid #3498db; } /* blue */
+.stat-recent   { border-left: 3px solid #bdc3c7; } /* silver */
 
 /* ============================================================
    CARDS / LOAN CARDS
@@ -394,6 +396,21 @@ html[data-theme="themeForest"] .loan-card {
 .status-overdue {
   color:#000000;
   background: rgba(251, 191, 60, 0.98);
+}
+
+.status-upcoming {
+  color: #ffffff;
+  background: rgba(52, 152, 219, 0.95); /* blue */
+}
+
+.status-recent {
+  color: #000000;
+  background: rgba(189, 195, 199, 0.95); /* silver */
+}
+
+.status-returned {
+  color: #000000;
+  background: rgba(189, 195, 199, 0.95); /* silver */
 }
 
 .loan-card-body {

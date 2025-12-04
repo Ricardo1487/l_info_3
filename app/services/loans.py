@@ -31,7 +31,7 @@ def list_loans() -> List[Dict[str, Any]]:
                 b.box_code
             FROM loans l
             JOIN boxes b ON l.box_id = b.id
-            WHERE l.status IN ('OPEN', 'OVERDUE', 'MISSING_ITEMS')
+            WHERE l.status IN ('OPEN', 'OVERDUE', 'MISSING_ITEMS', 'RETURNED')
             ORDER BY l.planned_end_date ASC
         """)).mappings().all()
 

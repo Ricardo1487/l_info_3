@@ -321,6 +321,7 @@ def home():
         returned_count=stats["returned"],
         missing_count=stats["missing"],
         overdue_count=stats["overdue"],
+        date=date,
     )
 
 # ---------------------------------------------------
@@ -1015,7 +1016,17 @@ def review_return_contents(loan_id: int):
                         closed_by_user_id=2,  # TODO: session["user_id"]
                     )
 
-                    delete_loan_if_fully_returned(loan_id)
+                    # Nur löschen, wenn Rückgabedatum älter als 7 Tage ist
+                    with SessionLocal() as delay_session:
+                        row = delay_session.execute(
+                            text("SELECT actual_end_date FROM loans WHERE id = :id"),
+                            {"id": loan_id}
+                        ).mappings().first()
+
+                        if row and row["actual_end_date"]:
+                            age_days = (today - row["actual_end_date"]).days
+                            if age_days >= 7:
+                                delete_loan_if_fully_returned(loan_id)
             except Exception as e:
                 print("Fehler beim Markieren/Löschen der Leihe:", e)
 
