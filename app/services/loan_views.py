@@ -11,7 +11,11 @@ def compute_loan_stats(loans: list[dict]) -> dict:
     today = date.today()
     return {
         "total": len(loans),
-        "open": sum(1 for l in loans if l.get("status") == "OPEN"),
+        "open": sum(
+            1 for l in loans
+            if l.get("status") == "OPEN"
+            and not (l.get("planned_start_date") and l["planned_start_date"] > today)
+        ),
         "returned": sum(1 for l in loans if l.get("status") == "RETURNED"),
         "missing": sum(1 for l in loans if l.get("status") == "MISSING_ITEMS"),
         "overdue": sum(1 for l in loans if l.get("status") == "OVERDUE"),
@@ -47,6 +51,15 @@ def filter_loans(loans: list[dict], contact: Optional[str], status: Optional[str
             result = [
                 l for l in result
                 if l.get("planned_start_date") and l["planned_start_date"] > today
+            ]
+            return result
+
+        if status == "OPEN":
+            today = date.today()
+            result = [
+                l for l in result
+                if l.get("status") == "OPEN"
+                and not (l.get("planned_start_date") and l["planned_start_date"] > today)
             ]
             return result
 

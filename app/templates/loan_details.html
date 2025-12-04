@@ -28,11 +28,17 @@
             <div class="loan-value">{{ loan.planned_end_date_formatted }}</div>
         </div>
 
+        {% set today = date.today() %}
+        {% if loan.planned_start_date and loan.planned_start_date > today %}
+            {% set display_status = "UPCOMING" %}
+        {% else %}
+            {% set display_status = loan.status %}
+        {% endif %}
         <div class="loan-info-row">
             <div class="loan-label">Status:</div>
             <div class="loan-value">
-                <span class="status-badge status-{{ loan.status|lower }}">
-                    {{ loan.status }}
+                <span class="status-badge status-{{ display_status|lower }}">
+                    {{ display_status|lower|replace("_", " ") }}
                 </span>
             </div>
         </div>

@@ -322,6 +322,8 @@ def home():
         returned_count=stats["returned"],
         missing_count=stats["missing"],
         overdue_count=stats["overdue"],
+        upcoming_count=stats["upcoming"],
+        recent=stats["recent"],
         date=date,
     )
 
@@ -365,6 +367,7 @@ def loan_details(loan_id: int):
         initial_objects=initial_objects,
         return_objects=return_objects,
         missing_objects=missing_objects,
+        date=date,
     )
 # ---------------------------------------------------
 # Neue Leihe Formular (Schritt 1 – ohne Foto!)

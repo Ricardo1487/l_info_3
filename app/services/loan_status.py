@@ -25,6 +25,30 @@ def mark_overdue_loans(today: date) -> int:
 
 
 # ---------------------------------------------------------
+#  UPCOMING → OPEN aktivieren, sobald Startdatum erreicht ist
+# ---------------------------------------------------------
+def activate_upcoming_loans(today: date) -> int:
+    """
+    Setzt Leihen, deren Startdatum erreicht/überschritten ist,
+    automatisch von UPCOMING auf OPEN.
+    """
+    with SessionLocal() as session:
+        result = session.execute(
+            text("""
+                UPDATE loans
+                SET status = 'OPEN'
+                WHERE
+                    status = 'UPCOMING'
+                    AND planned_start_date <= :today
+                    AND actual_start_date IS NULL
+            """),
+            {"today": today},
+        )
+        session.commit()
+        return result.rowcount
+
+
+# ---------------------------------------------------------
 #  Interne Helper-Funktion: Leihe schließen
 # ---------------------------------------------------------
 def _close_loan(
