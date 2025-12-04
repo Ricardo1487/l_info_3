@@ -89,12 +89,11 @@ def analyze_image_file(file_storage):
     data = json.loads(raw)
 
     # Sicherheit: Immer ein Dict mit 'objects' liefern
-    if not isinstance(data, dict):
-        raise ValueError(f"Analyse-Resultat ist kein Objekt: {data}")
-
-    if "objects" not in data:
-        # Falls das Modell eine Liste oder etwas anderes zurückgibt, wrappe es
+    # Wenn das Modell KEIN Dict zurückgibt (z.B. eine Liste) ODER
+    # ein Dict ohne "objects"-Key, dann wrappen wir es.
+    if not isinstance(data, dict) or "objects" not in data:
         data = {"objects": data}
 
     return data
+
 
