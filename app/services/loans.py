@@ -375,18 +375,17 @@ def compare_object_sets(initial: Dict[str, int], returned: Dict[str, int]) -> Di
 def delete_loan_if_fully_returned(loan_id: int) -> bool:
     """
     Löscht eine Leihe und alle verknüpften Daten (Fotos, erkannte Objekte,
-    Erinnerungen) **nur**, wenn sie als vollständig zurückgegeben gilt.
+    Erinnerungen).
 
-    Bedingungen:
-      - loans.status = 'RETURNED'
-      - loans.actual_end_date IS NOT NULL
+    Kann nur Leihen mit Status 'RETURNED' oder 'MISSING_ITEMS' löschen,
+    da diese abgeschlossen sind.
 
     Hinweis für den Prof:
       Theoretisch könnten wir hier auch archivieren statt löschen.
       Aus Performance-/Speichergründen räumen wir aber direkt auf.
     """
     with SessionLocal() as session:
-        # 1) Status und tatsächliches Enddatum prüfen
+        # 1) Status prüfen
         row = session.execute(
             text("""
                 SELECT status, actual_end_date
@@ -403,9 +402,9 @@ def delete_loan_if_fully_returned(loan_id: int) -> bool:
         status = row["status"]
         actual_end_date = row["actual_end_date"]
 
-        # Nur löschen, wenn sie sauber zurückgegeben ist
-        if status != "RETURNED" or actual_end_date is None:
-            print(f"[DEBUG] Loan {loan_id} nicht löschbar (status={status}, actual_end_date={actual_end_date})")
+        # Nur löschen, wenn sie als beendet markiert sind
+        if status not in ("RETURNED", "MISSING_ITEMS"):
+            print(f"[DEBUG] Loan {loan_id} nicht löschbar (status={status}). Nur RETURNED oder MISSING_ITEMS dürfen gelöscht werden.")
             return False
 
         # 2) ZUERST alle Dateipfade der Fotos holen

@@ -1283,6 +1283,24 @@ def review_return_contents(loan_id: int):
     )
 
 # ---------------------------------------------------
+# Leihe löschen
+# ---------------------------------------------------
+@app.route("/loan/<int:loan_id>/delete", methods=["POST"])
+@login_required
+def delete_loan_route(loan_id: int):
+    loan = get_loan_by_id(loan_id)
+    if loan is None:
+        abort(404, "Leihe nicht gefunden.")
+
+    try:
+        delete_loan_if_fully_returned(loan_id)
+        flash("Leihe wurde erfolgreich gelöscht.", "success")
+    except Exception as e:
+        flash(f"Fehler beim Löschen der Leihe: {e}", "error")
+
+    return redirect(url_for("home"))
+
+# ---------------------------------------------------
 # Inhalt einer Leihe prüfen (INITIAL vs RETURN)
 # ---------------------------------------------------
 @app.route("/loan/<int:loan_id>/check-contents")

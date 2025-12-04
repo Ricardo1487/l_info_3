@@ -175,6 +175,12 @@
                     Rückgabe starten
                 </a>
             {% endif %}
+            
+            <form method="post" action="{{ url_for('delete_loan_route', loan_id=loan.id) }}" style="display: inline;" onsubmit="return confirm('Möchtest du diese Leihe wirklich löschen?');">
+                <button type="submit" class="btn-danger" style="background-color: #e74c3c; border-color: #c0392b;">
+                    🗑️ Löschen
+                </button>
+            </form>
         </div>
     {% endif %}
 </div>
