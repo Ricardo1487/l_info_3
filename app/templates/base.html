@@ -42,13 +42,34 @@
         {% else %}
             <a href="{{ url_for('login') }}" class="nav-link nav-link-primary">Login</a>
         {% endif %}
-        </nav>
+    </nav>
 
-        <!-- Theme Toggle: Mountain ⇄ Forest -->
-        <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Theme wechseln">
-            <span id="theme-toggle-label">M</span>
-        </button>
+    <!-- MOBILE-ONLY BUTTONS -->
+    <div class="mobile-header-actions">
+
+    <div class="mobile-action-wrapper">
+        <a href="{{ url_for('change_password_route') }}" class="icon-button" title="Passwort ändern">🔑</a>
+        <span class="mobile-action-label">Passwort</span>
     </div>
+
+    <div class="mobile-action-wrapper">
+        <a href="{{ url_for('logout') }}" class="icon-button" title="Logout">🚪</a>
+        <span class="mobile-action-label">Logout</span>
+    </div>
+
+</div>
+
+
+
+
+
+
+    <!-- Theme Toggle Mountain-> Forest-->
+    <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Theme wechseln">
+        <span id="theme-toggle-label">☀️</span>
+    </button>
+</div>
+
 </header>
 
 <!-- Hauptinhalt -->
@@ -85,11 +106,7 @@
             <span class="bottom-nav-label">Neu</span>
         </a>
 
-        <!-- Passwort ändern -->
-        <a href="{{ url_for('change_password_route') }}" class="bottom-nav-item">
-            <span class="bottom-nav-icon">🔑</span>
-            <span class="bottom-nav-label">Passwort</span>
-        </a>
+
 
         {% if session.get("user_role") == "ADMIN" %}
             <!-- Benutzerverwaltung -->
@@ -99,12 +116,6 @@
             </a>
 
         {% endif %}
-
-        <!-- Logout -->
-        <a href="{{ url_for('logout') }}" class="bottom-nav-item">
-            <span class="bottom-nav-icon">🚪</span>
-            <span class="bottom-nav-label">Logout</span>
-        </a>
 
     {% else %}
 
@@ -132,7 +143,7 @@
         html.setAttribute("data-theme", theme);
         localStorage.setItem("theme", theme);
         if (label) {
-            label.textContent = theme === "themeMountain" ? "M" : "F";
+            label.textContent = theme === "themeMountain" ? "☀️" : "🌙";
         }
     }
 
