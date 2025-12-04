@@ -1142,3 +1142,43 @@ html[data-theme="themeForest"] .filter-button-reset:hover {
     position: relative;
     z-index: 2;
 }
+/* --- MOBILE HEADER ACTION BUTTONS --- */
+.mobile-header-actions {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .mobile-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        margin-right: 0.4rem;
+    }
+
+    .mobile-header-actions .icon-button {
+        font-size: 1.45rem;
+        line-height: 1;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+    }
+
+    /* Desktop-Navigation unsichtbar auf Mobile */
+    .nav-links {
+        display: none;
+    }
+}
+.mobile-logout-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 0.75rem;
+    margin-top: -4px; /* optional, feinjustieren */
+}
+
+.mobile-logout-label {
+    margin-top: 2px;
+    font-weight: 600;
+    opacity: 0.9;
+}

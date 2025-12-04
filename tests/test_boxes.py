@@ -107,8 +107,9 @@ class DummySessionForCreateBox:
     """
     Simuliert eine Session für create_box():
 
-    1. execute() → SELECT MAX(id) ...
-    2. execute() → INSERT ... RETURNING id
+    1. execute() → SELECT MAX(id) AS max_id FROM boxes
+    2. execute() → SELECT id FROM boxes WHERE box_code = :code LIMIT 1
+    3. execute() → INSERT ... RETURNING id
     """
 
     def __init__(self, max_id=0, new_id=1):
@@ -120,9 +121,16 @@ class DummySessionForCreateBox:
 
     def execute(self, stmt, params=None):
         self.executed.append((str(stmt), params))
+        # Erste Query: SELECT MAX(id) ...
         if self.calls == 0:
             self.calls += 1
             return DummyResultSelectMax(self._max_id)
+        # Zweite Query: SELECT id FROM boxes ...
+        elif self.calls == 1:
+            self.calls += 1
+            # None simuliert: es gibt noch keine Box mit diesem Code
+            return DummyResultMappings(None)
+        # Dritte Query: INSERT ... RETURNING id
         else:
             self.calls += 1
             return DummyResultInsert(self._new_id)
@@ -192,9 +200,15 @@ def test_create_box_auto_generates_code_when_none(monkeypatch):
     new_id = boxes_module.create_box()
 
     assert new_id == 4
-    # zweite execute() sollte das INSERT sein
-    assert len(dummy_session.executed) == 2
-    _, params = dummy_session.executed[1]
+
+    # Es gibt jetzt 3 execute()-Aufrufe:
+    # 1) SELECT MAX(id) AS max_id FROM boxes
+    # 2) SELECT id FROM boxes WHERE box_code = :code
+    # 3) INSERT INTO boxes (...) RETURNING id
+    assert len(dummy_session.executed) == 3
+
+    # Die 3. Query ist das INSERT, dort prüfen wir den Code
+    _, params = dummy_session.executed[2]
     assert params["code"] == "BOX-004"
     assert dummy_session.committed is True
 
