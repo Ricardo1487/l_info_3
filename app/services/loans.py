@@ -1,6 +1,6 @@
 # app/Services/loans.py
 
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import List, Dict, Any, Optional
 from sqlalchemy import text
 from app.config.database import SessionLocal
@@ -105,6 +105,10 @@ def create_loan(
     if planned_end_date < planned_start_date:
         raise ValueError("planned_end_date darf nicht vor planned_start_date liegen")
 
+    # UPCOMING if start date is in the future
+    today = datetime.now(timezone.utc).date()
+    status_value = 'UPCOMING' if planned_start_date > today else 'OPEN'
+
     with SessionLocal() as session:
         result = session.execute(
             text("""
@@ -119,7 +123,7 @@ def create_loan(
                 VALUES (
                     :box_id,
                     :contact_email,
-                    'OPEN',
+                    :status,
                     :start,
                     :end,
                     :created_by
@@ -129,6 +133,7 @@ def create_loan(
             {
                 "box_id": box_id,
                 "contact_email": contact_email,
+                "status": status_value,
                 "start": planned_start_date,
                 "end": planned_end_date,
                 "created_by": created_by_user_id
