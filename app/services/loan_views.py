@@ -1,18 +1,30 @@
 # app/services/loan_views.py
 from datetime import date
 from typing import Optional
+from datetime import timedelta
 
 
 def compute_loan_stats(loans: list[dict]) -> dict:
     """
     Berechnet einfache Statistiken für eine Liste von Leihen.
     """
+    today = date.today()
     return {
         "total": len(loans),
         "open": sum(1 for l in loans if l.get("status") == "OPEN"),
         "returned": sum(1 for l in loans if l.get("status") == "RETURNED"),
         "missing": sum(1 for l in loans if l.get("status") == "MISSING_ITEMS"),
         "overdue": sum(1 for l in loans if l.get("status") == "OVERDUE"),
+        "upcoming": sum(
+            1 for l in loans
+            if l.get("planned_start_date") and l["planned_start_date"] > today
+        ),
+        "recent": sum(
+            1 for l in loans
+            if l.get("status") == "RETURNED"
+            and l.get("actual_end_date")
+            and (today - l["actual_end_date"]).days <= 7
+        )
     }
 
 
@@ -30,6 +42,24 @@ def filter_loans(loans: list[dict], contact: Optional[str], status: Optional[str
         ]
 
     if status:
+        if status == "UPCOMING":
+            today = date.today()
+            result = [
+                l for l in result
+                if l.get("planned_start_date") and l["planned_start_date"] > today
+            ]
+            return result
+
+        if status == "RECENT":
+            today = date.today()
+            result = [
+                l for l in result
+                if l.get("status") == "RETURNED"
+                and l.get("actual_end_date")
+                and (today - l["actual_end_date"]).days <= 7
+            ]
+            return result
+
         result = [l for l in result if l.get("status") == status]
 
     return result
