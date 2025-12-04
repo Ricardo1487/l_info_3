@@ -5,6 +5,7 @@ from typing import List, Dict, Any, Optional
 from sqlalchemy import text
 from app.config.database import SessionLocal
 from app.services.photos_storage import delete_photo_from_storage
+
 import os
 from app.services.photos_storage import get_public_url
 
@@ -190,29 +191,45 @@ def create_loan_with_validation(box_id: int, form_data: dict, created_by_user_id
 # ---------------------------------------------------------
 #  Frist einer Leihe verlängern
 # ---------------------------------------------------------
-def extend_loan(
+def update_loan_basic_data(
     *,
     loan_id: int,
-    new_end_date: date
+    contact_email: Optional[str],
+    planned_start_date: Optional[date],
+    planned_end_date: Optional[date],
 ) -> None:
     """
-    Verlängert das geplante Enddatum einer Leihe.
+    Aktualisiert die Stammdaten einer Leihe:
+      - contact_email
+      - planned_start_date
+      - planned_end_date
+
+    Einfache Plausibilitätsprüfung:
+      - Wenn beide Datumswerte gesetzt sind, darf planned_start_date
+        nicht nach planned_end_date liegen.
     """
+    if planned_start_date and planned_end_date and planned_start_date > planned_end_date:
+        raise ValueError("Ausgabedatum darf nicht nach dem Rückgabedatum liegen.")
 
     with SessionLocal() as session:
         session.execute(
-            text("""
+            text(
+                """
                 UPDATE loans
-                SET planned_end_date = :new_date
+                SET contact_email = :email,
+                    planned_start_date = :start_date,
+                    planned_end_date = :end_date
                 WHERE id = :loan_id
-            """),
+                """
+            ),
             {
                 "loan_id": loan_id,
-                "new_date": new_end_date
-            }
+                "email": contact_email or None,
+                "start_date": planned_start_date,
+                "end_date": planned_end_date,
+            },
         )
         session.commit()
-
 
 # ---------------------------------------------------------
 #  Leihe als "MISSING_ITEMS" markieren
@@ -455,3 +472,42 @@ def get_initial_contents_for_all_loans() -> Dict[int, Dict[str, int]]:
         result[loan_id][row["label"]] = row["qty"]
 
     return result
+def update_loan_basic_data(
+    *,
+    loan_id: int,
+    contact_email: Optional[str],
+    planned_start_date: Optional[date],
+    planned_end_date: Optional[date],
+) -> None:
+    """
+    Aktualisiert die Basisdaten einer Leihe:
+      - contact_email
+      - planned_start_date
+      - planned_end_date
+
+    Einfache Plausibilitätsprüfung:
+      - Wenn beide Datumswerte gesetzt sind, darf planned_start_date
+        nicht nach planned_end_date liegen.
+    """
+    if planned_start_date and planned_end_date and planned_start_date > planned_end_date:
+        raise ValueError("Ausgabedatum darf nicht nach dem Rückgabedatum liegen.")
+
+    with SessionLocal() as session:
+        session.execute(
+            text(
+                """
+                UPDATE loans
+                SET contact_email = :email,
+                    planned_start_date = :start_date,
+                    planned_end_date = :end_date
+                WHERE id = :loan_id
+                """
+            ),
+            {
+                "loan_id": loan_id,
+                "email": contact_email or None,
+                "start_date": planned_start_date,
+                "end_date": planned_end_date,
+            },
+        )
+        session.commit()

@@ -22,12 +22,12 @@ import secrets  # kannst du von unten hier hochziehen, wenn du magst
 from app.services.loans import (
     list_loans,
     get_loan_by_id,
-    extend_loan,
     get_planned_periods_for_box,
     create_loan_with_validation,
     get_detected_objects_for_photo,
     compare_object_sets,
-    delete_loan_if_fully_returned
+    delete_loan_if_fully_returned,
+    update_loan_basic_data
 )
 
 from app.services.loan_views import (  # NEU
@@ -328,22 +328,72 @@ def home():
     )
 
 # ---------------------------------------------------
-# Loan Details Page
+# Loan Details Page (nur Anzeige)
 # ---------------------------------------------------
-@app.route("/loan/<int:loan_id>")
+@app.route("/loan/<int:loan_id>", methods=["GET", "POST"])
 @login_required
 def loan_details(loan_id: int):
+    """
+    Detailansicht einer Leihe:
+      - Basisdaten der Leihe
+      - erkannte Items aus INITIAL- und RETURN-Foto (aggregiert)
+      - fehlende Items
+      - Bearbeiten der Basisdaten (E-Mail + geplante Daten)
+    """
     loan = get_loan_by_id(loan_id)
     if loan is None:
         abort(404, "Leihe nicht gefunden.")
 
-    # Datum formatieren
+    # -----------------------------
+    # POST: Änderungen speichern
+    # -----------------------------
+    if request.method == "POST":
+        contact_email = request.form.get("contact_email", "").strip()
+        start_str = request.form.get("planned_start_date", "") or ""
+        end_str = request.form.get("planned_end_date", "") or ""
+
+        # Strings -> date-Objekte (oder None)
+        try:
+            planned_start = date.fromisoformat(start_str) if start_str else None
+            planned_end = date.fromisoformat(end_str) if end_str else None
+        except ValueError:
+            flash("Ungültiges Datum. Bitte im Format JJJJ-MM-TT eingeben.", "error")
+            return redirect(url_for("loan_details", loan_id=loan_id, mode="edit"))
+
+        try:
+            update_loan_basic_data(
+                loan_id=loan_id,
+                contact_email=contact_email,
+                planned_start_date=planned_start,
+                planned_end_date=planned_end,
+            )
+        except ValueError as e:
+            # z.B. wenn Ausgabedatum > Rückgabedatum
+            flash(str(e), "error")
+            return redirect(url_for("loan_details", loan_id=loan_id, mode="edit"))
+
+        flash("Leihe wurde aktualisiert.", "success")
+        # Nach dem Speichern zurück in den View-Modus
+        return redirect(url_for("loan_details", loan_id=loan_id))
+
+    # -----------------------------
+    # GET: Anzeige (View oder Edit)
+    # -----------------------------
+    mode = request.args.get("mode", "view").strip().lower()
+    edit_mode = mode == "edit"
+
+    # Datumswerte für Anzeige formatieren
     if isinstance(loan.get("planned_start_date"), date):
         loan["planned_start_date_formatted"] = loan["planned_start_date"].strftime("%d.%m.%Y")
+    else:
+        loan["planned_start_date_formatted"] = loan.get("planned_start_date")
+
     if isinstance(loan.get("planned_end_date"), date):
         loan["planned_end_date_formatted"] = loan["planned_end_date"].strftime("%d.%m.%Y")
+    else:
+        loan["planned_end_date_formatted"] = loan.get("planned_end_date")
 
-    # Inhalte laden
+    # Inhalte laden: aggregierte Objekte aus der DB
     with SessionLocal() as session:
         initial_objects = get_detected_objects_for_photo(session, loan_id, "INITIAL")
         return_objects = get_detected_objects_for_photo(session, loan_id, "RETURN")
@@ -352,13 +402,8 @@ def loan_details(loan_id: int):
     initial_objects = initial_objects or {}
     return_objects = return_objects or {}
 
-    # Fehlende Gegenstände berechnen – **rein aus der DB**
+    # Fehlende Gegenstände berechnen
     missing_objects = compare_object_sets(initial_objects, return_objects)
-
-    # Debug-Ausgabe, um zu sehen was passiert
-    print("DEBUG loan_details INITIAL:", initial_objects)
-    print("DEBUG loan_details RETURN:", return_objects)
-    print("DEBUG loan_details MISSING:", missing_objects)
 
     return render_template(
         "loan_details.html",
@@ -368,6 +413,8 @@ def loan_details(loan_id: int):
         return_objects=return_objects,
         missing_objects=missing_objects,
         date=date,
+        mode=mode,
+        edit_mode=edit_mode,
     )
 # ---------------------------------------------------
 # Neue Leihe Formular (Schritt 1 – ohne Foto!)
