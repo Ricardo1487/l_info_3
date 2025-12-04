@@ -53,6 +53,7 @@ from app.services.boxes import (
 # photos_storage importieren – neue Funktion für direkten Upload
 from app.services.photos_storage import (
     upload_initial_photo_for_loan,
+    upload_return_photo_for_loan
 )
 # user services importieren
 from app.services.users import (
@@ -676,6 +677,29 @@ def upload_photo(loan_id: int):
     if loan is None:
         abort(404, "Leihe nicht gefunden.")
 
+    # 🔒 Check: Gibt es bereits ein INITIAL-Foto für diese Leihe?
+    with SessionLocal() as session:
+        existing_initial = session.execute(
+            text(
+                """
+                SELECT id
+                FROM photos
+                WHERE loan_id = :loan_id
+                  AND type = 'INITIAL'
+                LIMIT 1
+                """
+            ),
+            {"loan_id": loan_id},
+        ).mappings().first()
+
+    if existing_initial:
+        flash(
+            "Für diese Leihe existiert bereits ein Initial-Foto. "
+            "Du kannst es unter „Foto & Inhalt prüfen“ ansehen.",
+            "error",
+        )
+        return redirect(url_for("review_initial_contents", loan_id=loan_id))
+
     if request.method == "POST":
         photo = request.files.get("photo")
         if not photo:
@@ -692,7 +716,8 @@ def upload_photo(loan_id: int):
             print("Fehler bei der Bildanalyse:", e)
             detected_objects = []
 
-        # 1) Foto nach Supabase hochladen (direkt unter loans/<id>/...)
+        # 1) Foto nach Supabase hochladen
+        #    (nutzt deine neue Upload-Logik in photos_storage)
         bucket_key = upload_initial_photo_for_loan(loan_id, photo)
 
         # 2) Foto-Eintrag in der DB (photos-Tabelle)
@@ -706,7 +731,6 @@ def upload_photo(loan_id: int):
                 {
                     "loan_id": loan_id,
                     "file_path": bucket_key,
-
                 }
             )
             photo_id = result.scalar_one()
@@ -735,8 +759,6 @@ def upload_photo(loan_id: int):
         title="Foto aufnehmen",
         loan=loan,
     )
-
-
 # ---------------------------------------------------
 # Rückgabe
 # ---------------------------------------------------
@@ -770,6 +792,30 @@ def upload_return_photo(loan_id: int):
     if loan is None:
         abort(404, "Leihe nicht gefunden.")
 
+    # 🔒 Check: gibt es bereits ein RETURN-Foto für diese Leihe?
+    with SessionLocal() as session:
+        existing_return = session.execute(
+            text(
+                """
+                SELECT id
+                FROM photos
+                WHERE loan_id = :loan_id
+                  AND type = 'RETURN'
+                LIMIT 1
+                """
+            ),
+            {"loan_id": loan_id},
+        ).mappings().first()
+
+    if existing_return:
+        flash(
+            "Für diese Leihe existiert bereits ein Rückgabefoto. "
+            "Du kannst die Rückgabe unter „Rückgabe prüfen“ einsehen.",
+            "error",
+        )
+        return redirect(url_for("review_return_contents", loan_id=loan_id))
+
+    # ⬇️ Ab hier nur Fälle ohne RETURN-Foto
     if request.method == "POST":
         photo = request.files.get("photo")
         if not photo:
@@ -785,8 +831,8 @@ def upload_return_photo(loan_id: int):
             print("Fehler bei der Rückgabe-Bildanalyse:", e)
             detected_objects = []
 
-        # Foto nach Supabase hochladen (wir verwenden die gleiche Helper-Funktion)
-        bucket_key = upload_initial_photo_for_loan(loan_id, photo)
+        # Foto nach Supabase hochladen (dedizierter RETURN-Helper)
+        bucket_key = upload_return_photo_for_loan(loan_id, photo)
 
         # Foto-Eintrag + erkannte Objekte als RETURN speichern
         with SessionLocal() as session:
@@ -822,13 +868,12 @@ def upload_return_photo(loan_id: int):
         # Nach dem Upload/Analyse zur Rückgabe-Review-Seite
         return redirect(url_for("review_return_contents", loan_id=loan_id))
 
-    # GET: Formular zum Rückgabe-Foto hochladen anzeigen (wir nutzen das existierende Template)
+    # GET: Formular zum Rückgabe-Foto hochladen anzeigen
     return render_template(
         "upload_photo.html",
         title="Rückgabe-Foto aufnehmen",
         loan=loan,
     )
-
 
 # ---------------------------------------------------
 # Leihe verlängern
