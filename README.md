@@ -258,7 +258,7 @@ Deployment-URL:
 Die Anwendung nutzt eine relationale PostgreSQL-Datenbank über Supabase.  
 Die wichtigsten Tabellen und ihre Beziehungen sind im folgenden Schema dargestellt:
 
-![Datenbankschema](docs/db_schema.png)
+![Datenbankschema](Documentation/db_schema.png)
 
 
 ---------
