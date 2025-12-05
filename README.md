@@ -39,7 +39,7 @@ Sie deckt den gesamten Ablauf ab:
 
 - automatische & manuelle Boxcodes
 - QR-Code-Erzeugung
-- Statusübersicht (frei, ausgeliehen, überfällig, fehlende Teile)
+- Statusübersicht 
 - Boxdetails
 
 #### Leihmanagement
