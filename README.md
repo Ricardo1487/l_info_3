@@ -138,10 +138,6 @@ Die Anwendung ist in drei Ebenen gegliedert:
 |  +- 001_init_schema.sql
 |  +- 002_testdata.sql
 |
-+- scripts/
-|  +- db_check.py
-|  +- loan_demo.py
-|
 +- tests/
 |   enthält die automatisierten pytest-Tests des Projekts:
 |  +- Service-Tests (Boxen, Leihen, Nutzer)
