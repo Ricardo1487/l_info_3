@@ -2,6 +2,8 @@
 from datetime import date
 from typing import Optional
 from datetime import timedelta
+from app.services.email_mock import send_email
+
 
 
 def compute_loan_stats(loans: list[dict]) -> dict:
@@ -143,7 +145,7 @@ def sort_loans(loans: list[dict], sort_field: str, sort_dir: str) -> list[dict]:
 
     # ---------------- Sortierung anwenden ----------------
     if field_type == "date":
-        # wie vorher: fehlende Datumswerte ans Ende/Anfang
+        # fehlende Datumswerte ans Ende/Anfang
         if sort_dir == "asc":
             return sorted(loans, key=lambda l: key_func(l) or date.max)
         else:
@@ -184,4 +186,17 @@ def log_overdue_loans(loans: list[dict]) -> None:
             f"  - Leih-ID #{loan_id} | Box {box_code} | "
             f"Kontakt: {contact} | geplante Rückgabe: {end_date}"
         )
+        # E-Mail-Mock aufrufen (falls Kontakt vorhanden)
+        if contact and "@" in contact:
+            send_email(
+                to=contact,
+                subject="Ihre Leihe ist überfällig",
+                body=(
+                    f"Die Leihe #{loan_id} für Box {box_code} ist seit "
+                    f"{end_date} überfällig."
+                ),
+                category="overdue_notice",
+                metadata={"loan_id": loan_id, "box_code": box_code},
+            )
+
     print("=" * 70 + "\n")
