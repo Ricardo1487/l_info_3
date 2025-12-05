@@ -72,6 +72,11 @@
             </div>
         </div>
 
+        <div class="loan-info-row">
+            <div class="loan-label">Erstellt von:</div>
+            <div class="loan-value">{{ loan.created_by_email }}</div>
+        </div>
+
     </div>
 
     <!-- ============================= -->
@@ -163,6 +168,10 @@
         <div class="photo-wrapper">
             <h3 class="photo-subtitle">RÜCKGABE</h3>
             <img src="{{ loan.return_photo }}" alt="Rückgabe-Foto der Box" class="loan-photo">
+            <br><br>
+            <a href="{{ url_for('change_return_photo', loan_id=loan.id, redirect_to='loan_details') }}" class="btn-secondary">
+                📷 Foto ändern
+            </a>
         </div>
         {% endif %}
 

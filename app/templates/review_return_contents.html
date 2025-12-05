@@ -21,6 +21,10 @@
         {% if loan.return_photo %}
             <img src="{{ loan.return_photo }}" alt="Rückgabe-Foto"
                  style="max-width:300px; border-radius:8px;">
+            <br><br>
+            <a href="{{ url_for('change_return_photo', loan_id=loan.id, redirect_to='review_return_contents') }}" class="btn-secondary">
+                📷 Foto ändern
+            </a>
         {% else %}
             <p>Kein Rückgabe-Foto vorhanden.</p>
         {% endif %}
@@ -62,10 +66,10 @@
                     {% for obj in returned_objects_list %}
                     <tr>
                         <td>
-                            <input type="text" name="label_{{ obj.id }}" value="{{ obj.label }}">
+                            <input type="text" name="label_{{ obj.id }}" value="{{ obj.label }}" style="width: 150px;">
                         </td>
                         <td>
-                            <input type="number" name="quantity_{{ obj.id }}" value="{{ obj.quantity }}" min="1" step="1">
+                            <input type="number" name="quantity_{{ obj.id }}" value="{{ obj.quantity }}" min="1" step="1" style="width: 60px;">
                         </td>
                         <td>
                             {% if obj.is_manually_edited %}

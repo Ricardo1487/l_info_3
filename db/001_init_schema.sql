@@ -24,7 +24,6 @@ CREATE TABLE loans (
   status              VARCHAR(20) NOT NULL CHECK (status IN ('OPEN','RETURNED','OVERDUE','MISSING_ITEMS')),
   planned_start_date  DATE NOT NULL,
   planned_end_date    DATE NOT NULL,
-  actual_start_date   DATE,
   actual_end_date     DATE,
   created_by_user_id  INTEGER,
   closed_by_user_id   INTEGER,
@@ -43,7 +42,6 @@ CREATE TABLE loans (
     CHECK (planned_end_date >= planned_start_date),
   CONSTRAINT chk_actual_dates
     CHECK (
-      actual_start_date IS NULL
       OR actual_end_date IS NULL
       OR actual_end_date >= actual_start_date
     )

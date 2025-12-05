@@ -822,12 +822,8 @@ def return_box(loan_id: int):
         abort(404, "Leihe nicht gefunden.")
 
     if request.method == "POST":
-        return_loan(
-            loan_id=loan_id,
-            actual_end_date=date.today(),
-            closed_by_user_id=2
-        )
-        return redirect(url_for("home"))
+        # Keine automatische Statusänderung hier — nur zum Rückgabe-Foto weiterleiten
+        return redirect(url_for("upload_return_photo", loan_id=loan_id))
 
     # GET: Direkt in den neuen Rückgabe-Foto-Flow verzweigen
     return redirect(url_for("upload_return_photo", loan_id=loan_id))
@@ -1030,7 +1026,7 @@ def review_initial_contents(loan_id: int):
             # Get all new object labels and quantities (can be multiple)
             new_labels = request.form.getlist("new_object_label")
             new_quantities = request.form.getlist("new_object_quantity")
-            
+
             for i, new_label in enumerate(new_labels):
                 new_label = new_label.strip()
                 if new_label:
@@ -1186,7 +1182,7 @@ def review_return_contents(loan_id: int):
                 # Handle new objects added by the user
                 new_labels = request.form.getlist("new_object_label")
                 new_quantities = request.form.getlist("new_object_quantity")
-                
+
                 for i, new_label in enumerate(new_labels):
                     new_label = new_label.strip()
                     if new_label:
@@ -1215,7 +1211,7 @@ def review_return_contents(loan_id: int):
         print(return_photo)
         initial_objects = get_detected_objects_for_photo(session, loan_id, "INITIAL")
         returned_objects = get_detected_objects_for_photo(session, loan_id, "RETURN")
-        
+
         # Get list of return objects for editing in template
         returned_objects_list = session.execute(
             text(
@@ -1231,7 +1227,7 @@ def review_return_contents(loan_id: int):
             ),
             {"loan_id": loan_id},
         ).mappings().all()
-        
+
         missing_objects = compare_object_sets(initial_objects, returned_objects)
 
         if request.method == "POST":
@@ -1239,19 +1235,20 @@ def review_return_contents(loan_id: int):
 
             # Wenn etwas fehlt → Missing Items markieren, sonst ggf. Loan aufräumen
             try:
+                from flask import session as flask_session
                 if missing_objects:
                     # 🔴 Es fehlen Teile → Leihe als MISSING_ITEMS abschließen
                     return_with_missing_items(
                         loan_id=loan_id,
                         actual_end_date=today,
-                        closed_by_user_id=2,  # TODO: session["user_id"]
+                        closed_by_user_id=flask_session["user_id"],
                     )
                 else:
                     # ✅ Alles da → Leihe als RETURNED markieren
                     return_loan(
                         loan_id=loan_id,
                         actual_end_date=today,
-                        closed_by_user_id=2,  # TODO: session["user_id"]
+                        closed_by_user_id=flask_session["user_id"],
                     )
 
                     # Nur löschen, wenn Rückgabedatum älter als 7 Tage ist
@@ -1280,6 +1277,120 @@ def review_return_contents(loan_id: int):
         returned_objects=returned_objects,
         returned_objects_list=returned_objects_list,
         missing_objects=missing_objects,
+    )
+
+# ---------------------------------------------------
+# Rückgabe-Foto ersetzen
+# ---------------------------------------------------
+@app.route("/loan/<int:loan_id>/change-return-photo", methods=["GET", "POST"])
+@login_required
+def change_return_photo(loan_id: int):
+    loan = get_loan_by_id(loan_id)
+    if loan is None:
+        abort(404, "Leihe nicht gefunden.")
+
+    # Zielseite bestimmen (von wo kommt der Benutzer?)
+    redirect_to = request.args.get("redirect_to", "review_return_contents")
+
+    if request.method == "POST":
+        photo = request.files.get("photo")
+        if not photo:
+            abort(400, "Foto fehlt.")
+
+        # Bild mit KI analysieren (Inhalt bei Rückgabe erkennen)
+        try:
+            analysis = analyze_image_file(photo)
+            print("RETURN ANALYSIS (CHANGE):", analysis)
+            detected_objects = analysis.get("objects", [])
+            print("RETURN OBJECTS (CHANGE):", detected_objects)
+        except Exception as e:
+            print("Fehler bei der Rückgabe-Bildanalyse:", e)
+            detected_objects = []
+
+        # Foto nach Supabase hochladen
+        bucket_key = upload_return_photo_for_loan(loan_id, photo)
+
+        # Löschen des alten RETURN-Fotos und dessen erkannten Objekte
+        with SessionLocal() as session:
+            # Alte Fotos und Objekte löschen
+            old_photo = session.execute(
+                text(
+                    """
+                    SELECT id
+                    FROM photos
+                    WHERE loan_id = :loan_id AND type = 'RETURN'
+                    ORDER BY id DESC
+                    LIMIT 1
+                    """
+                ),
+                {"loan_id": loan_id},
+            ).mappings().first()
+
+            if old_photo:
+                old_photo_id = old_photo["id"]
+                # Löschen der erkannten Objekte des alten Fotos
+                session.execute(
+                    text(
+                        """
+                        DELETE FROM detected_objects
+                        WHERE photo_id = :photo_id
+                        """
+                    ),
+                    {"photo_id": old_photo_id},
+                )
+                # Löschen des alten Fotos
+                session.execute(
+                    text(
+                        """
+                        DELETE FROM photos
+                        WHERE id = :photo_id
+                        """
+                    ),
+                    {"photo_id": old_photo_id},
+                )
+
+            # Neues Foto hinzufügen
+            result = session.execute(
+                text("""
+                    INSERT INTO photos (loan_id, type, file_path)
+                    VALUES (:loan_id, 'RETURN', :file_path)
+                    RETURNING id
+                """),
+                {
+                    "loan_id": loan_id,
+                    "file_path": bucket_key,
+                }
+            )
+            photo_id = result.scalar_one()
+
+            # Neue erkannte Objekte speichern
+            for obj in detected_objects:
+                session.execute(
+                    text("""
+                        INSERT INTO detected_objects (photo_id, label, confidence, quantity, is_manually_edited)
+                        VALUES (:photo_id, :label, :confidence, :quantity, false)
+                    """),
+                    {
+                        "photo_id": photo_id,
+                        "label": obj.get("label"),
+                        "confidence": obj.get("confidence"),
+                        "quantity": obj.get("quantity", 1),
+                    }
+                )
+
+            session.commit()
+
+        # Zurück zur ursprünglichen Seite
+        if redirect_to == "loan_details":
+            return redirect(url_for("loan_details", loan_id=loan_id))
+        else:
+            return redirect(url_for("review_return_contents", loan_id=loan_id))
+
+    # GET: Formular zum Rückgabe-Foto ändern anzeigen
+    return render_template(
+        "upload_photo.html",
+        title="Rückgabe-Foto ändern",
+        loan=loan,
     )
 
 # ---------------------------------------------------
