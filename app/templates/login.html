@@ -16,6 +16,7 @@
 <section class="card">
 
     <form method="POST" class="form">
+        <input type="hidden" name="next" value="{{ next or request.args.get('next', '') }}">
 
         <!-- E-Mail -->
         <div class="form-group">
