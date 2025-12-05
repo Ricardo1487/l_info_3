@@ -77,7 +77,9 @@ def login_required(view_func):
     def wrapper(*args, **kwargs):
         if "user_id" not in session:
             flash("Bitte melde dich zuerst an.", "error")
-            return redirect(url_for("login"))
+            # Merken, wohin der Benutzer ursprünglich wollte (inkl. Query-Parameter)
+            next_url = request.url
+            return redirect(url_for("login", next=next_url))
         return view_func(*args, **kwargs)
     return wrapper
 
@@ -102,17 +104,21 @@ def admin_required(view_func):
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "GET":
-        return render_template("login.html", title="Login")
+        next_url = request.args.get("next", "")
+        return render_template("login.html", title="Login", next=next_url)
 
     email = request.form.get("email", "").strip().lower()
     password = request.form.get("password", "")
+    # Ziel nach dem Login (z.B. /new-loan?box_code=BOX-001)
+    next_url = request.form.get("next") or request.args.get("next", "")
 
     user = get_user_by_email(email)
     if not user:
         return render_template(
             "login.html",
             title="Login",
-            message="Ungültige E-Mail oder Passwort."
+            message="Ungültige E-Mail oder Passwort.",
+            next=next_url,
         )
 
     stored_hash = user["password_hash"]
@@ -120,7 +126,8 @@ def login():
         return render_template(
             "login.html",
             title="Login",
-            message="Ungültige E-Mail oder Passwort."
+            message="Ungültige E-Mail oder Passwort.",
+            next=next_url,
         )
 
     # Login successful
@@ -129,6 +136,10 @@ def login():
     session["user_role"] = user["role"]
 
     flash("Login erfolgreich!", "success")
+    # Wenn wir eine Ziel-URL (next) haben, dorthin weiterleiten,
+    # ansonsten wie bisher auf die Übersicht.
+    if next_url:
+        return redirect(next_url)
     return redirect(url_for("home"))
 
 
