@@ -12,11 +12,12 @@ Web-Applikation zur Verwaltung von Boxen, Leihvorgängen, Nutzern und KI-basiert
 5. Projektstruktur
 6. Installation
 7. Deployment
-8. Datenbank
-9. Tests
-10. KI-Bildanalyse (OpenAI Vision)
-11. E-Mail Mock-System
-12. Team
+8. Testzugang
+9. Datenbank
+10. Tests
+11. KI-Bildanalyse (OpenAI Vision)
+12. E-Mail Mock-System
+13. Team
 ----
 ### 1. Projektüberblick
 
@@ -248,9 +249,13 @@ Die Anwendung kann auf Render, Railway oder jedem WSGI-fähigen Server betrieben
 
 Deployment-URL:
 <https://l-info-3.onrender.com>
-
 -----
-### 8. Datenbank
+### 8. Testzugang
+Es steht ein Demo-Admin-Account zur Verfügung:
+- **E-Mail:** admin@example.com  
+- **Passwort:** admin123  
+-----
+### 9. Datenbank
 Die Anwendung nutzt eine relationale PostgreSQL-Datenbank über Supabase.  
 Die wichtigsten Tabellen und ihre Beziehungen sind im folgenden Schema dargestellt:
 
@@ -258,7 +263,7 @@ Die wichtigsten Tabellen und ihre Beziehungen sind im folgenden Schema dargestel
 
 
 ---------
-### 9. Tests
+### 10. Tests
 
 **Tests ausführen**
 
@@ -277,7 +282,7 @@ Die wichtigsten Tabellen und ihre Beziehungen sind im folgenden Schema dargestel
 - Aufruf und Verhalten wichtiger Seiten  
 
 ----
-### 10. KI-Bildanalyse (OpenAI Vision)
+### 11. KI-Bildanalyse (OpenAI Vision)
 
 Die Anwendung nutzt ein Vision-fähiges KI-Modell über die OpenAI-Schnittstelle, um hochgeladene Fotos auszuwerten.
 Das Modell liefert eine strukturierte Liste erkannter Gegenstände zurück,
@@ -295,7 +300,7 @@ Diese erkannten Objekte werden beim Rückgabeprozess automatisch
 mit dem Initialfoto verglichen, um fehlende Gegenstände zu erkennen.
 
 ----
-### 11. E-Mail Mock-System
+### 12. E-Mail Mock-System
 
 Gemäß Aufgabenstellung wird die geplante E-Mail-Funktion noch nicht real implementiert, sondern über ein Mock-System simuliert.
 Dieses System dient dazu, den späteren Funktionsumfang vorzubereiten, ohne echte Nachrichten zu versenden.
@@ -308,7 +313,7 @@ Das Mock-System:
 
 ----
 
-### 12. Team
+### 13. Team
 | Name                 | Rolle                                         |
 |----------------------|-----------------------------------------------|
 | **Benli, Semih**     | QR-Code-Funktionalität, Boxenübersicht        |
