@@ -1289,6 +1289,9 @@ def change_return_photo(loan_id: int):
     if loan is None:
         abort(404, "Leihe nicht gefunden.")
 
+    # Zielseite bestimmen (von wo kommt der Benutzer?)
+    redirect_to = request.args.get("redirect_to", "review_return_contents")
+
     if request.method == "POST":
         photo = request.files.get("photo")
         if not photo:
@@ -1377,8 +1380,11 @@ def change_return_photo(loan_id: int):
 
             session.commit()
 
-        # Nach dem Upload zur Rückgabe-Review-Seite zurückkehren
-        return redirect(url_for("review_return_contents", loan_id=loan_id))
+        # Zurück zur ursprünglichen Seite
+        if redirect_to == "loan_details":
+            return redirect(url_for("loan_details", loan_id=loan_id))
+        else:
+            return redirect(url_for("review_return_contents", loan_id=loan_id))
 
     # GET: Formular zum Rückgabe-Foto ändern anzeigen
     return render_template(
