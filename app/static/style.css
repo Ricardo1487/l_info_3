@@ -1170,7 +1170,7 @@ html[data-theme="themeForest"] .filter-button-reset:hover {
 
 @media (max-width: 420px) {
   .stats-grid {
-    grid-template-columns: repeat(1, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.5rem;
   }
   .stat-card {
