@@ -1244,14 +1244,14 @@ def review_return_contents(loan_id: int):
                     return_with_missing_items(
                         loan_id=loan_id,
                         actual_end_date=today,
-                        closed_by_user_id=session["user_id"],
+                        closed_by_user_id=user_id,
                     )
                 else:
                     # ✅ Alles da → Leihe als RETURNED markieren
                     return_loan(
                         loan_id=loan_id,
                         actual_end_date=today,
-                        closed_by_user_id=session["user_id"],
+                        closed_by_user_id=user_id,
                     )
 
                     # Nur löschen, wenn Rückgabedatum älter als 7 Tage ist
