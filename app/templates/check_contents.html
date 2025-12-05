@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Title</title>
+</head>
+<body>
+
+</body>
+</html>
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Inhalt prüfen – Leihe #{{ loan.id }}</h1>
+
+<hr>
+
+<h2>🟢 Inhalt bei Ausgabe (INITIAL)</h2>
+{% if initial_objects %}
+    <ul>
+        {% for label, qty in initial_objects.items() %}
+            <li>{{ label }}: {{ qty }}</li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>Keine erkannten Gegenstände bei der Ausgabe.</p>
+{% endif %}
+
+<hr>
+
+<h2>🔵 Inhalt bei Rückgabe (RETURN)</h2>
+{% if returned_objects %}
+    <ul>
+        {% for label, qty in returned_objects.items() %}
+            <li>{{ label }}: {{ qty }}</li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>Keine erkannten Gegenstände bei der Rückgabe.</p>
+{% endif %}
+
+<hr>
+
+<h2>🔴 Fehlende Gegenstände</h2>
+{% if missing_objects %}
+    <ul>
+        {% for label, qty in missing_objects.items() %}
+            <li><strong>{{ label }}</strong>: {{ qty }} fehlt/fehlen</li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>Keine fehlenden Gegenstände ✅</p>
+{% endif %}
+
+<hr>
+
+<a href="{{ url_for('home') }}" class="btn btn-secondary">Zurück zur Übersicht</a>
+
+{% endblock %}

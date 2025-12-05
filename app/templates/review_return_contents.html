@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Rückgabe prüfen – Leihe #{{ loan.id }}</h1>
+
+<hr>
+
+<h2>📷 Fotos</h2>
+<div style="display:flex; gap:2rem; flex-wrap:wrap;">
+    <div>
+        <h3>Ausgabe (INITIAL)</h3>
+        {% if loan.initial_photo %}
+            <img src="{{ loan.initial_photo }}" alt="Initial-Foto"
+                 style="max-width:300px; border-radius:8px;">
+        {% else %}
+            <p>Kein Initial-Foto vorhanden.</p>
+        {% endif %}
+    </div>
+    <div>
+        <h3>Rückgabe (RETURN)</h3>
+        {% if loan.return_photo %}
+            <img src="{{ loan.return_photo }}" alt="Rückgabe-Foto"
+                 style="max-width:300px; border-radius:8px;">
+        {% else %}
+            <p>Kein Rückgabe-Foto vorhanden.</p>
+        {% endif %}
+    </div>
+</div>
+
+<hr>
+
+<form method="post" id="objects-form">
+<div style="display:flex; gap:3rem; align-items:flex-start; flex-wrap:wrap;">
+    <div style="flex:1; min-width:280px;">
+        <h2>📦 Inhalt bei Ausgabe (INITIAL)</h2>
+        {% if initial_objects %}
+        <ul>
+            {% for label, qty in initial_objects.items() %}
+                <li>{{ label }}: {{ qty }}</li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p>Keine erkannten Gegenstände bei der Ausgabe.</p>
+        {% endif %}
+    </div>
+
+    <div style="flex:1; min-width:280px;">
+        <h2>📥 Inhalt bei Rückgabe (RETURN)</h2>
+        
+        <div id="return-objects-list">
+            {% if returned_objects %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Label</th>
+                        <th>Menge</th>
+                        <th>Bearbeitet?</th>
+                        <th>Löschen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for obj in returned_objects_list %}
+                    <tr>
+                        <td>
+                            <input type="text" name="label_{{ obj.id }}" value="{{ obj.label }}">
+                        </td>
+                        <td>
+                            <input type="number" name="quantity_{{ obj.id }}" value="{{ obj.quantity }}" min="1" step="1">
+                        </td>
+                        <td>
+                            {% if obj.is_manually_edited %}
+                                ✅
+                            {% else %}
+                                ❌
+                            {% endif %}
+                        </td>
+                        <td>
+                            <input type="checkbox" name="delete_{{ obj.id }}">
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p>Keine erkannten Gegenstände bei der Rückgabe.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<hr style="margin: 1.5rem 0;">
+
+<h3>➕ Gegenstand hinzufügen</h3>
+<div style="margin-bottom: 1rem; padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+        <div>
+            <label for="new_label">Label</label>
+            <input type="text" id="new_label" name="new_label" placeholder="z.B. Laptop">
+        </div>
+        <div>
+            <label for="new_quantity">Menge</label>
+            <input type="number" id="new_quantity" name="new_quantity" value="1" min="1" step="1">
+        </div>
+    </div>
+    <button type="button" id="add-object-btn" class="btn-secondary" style="width: 100%;">
+        Hinzufügen
+    </button>
+</div>
+
+<hr style="margin: 1.5rem 0;">
+
+<h2>🔴 Fehlende Gegenstände</h2>
+{% if missing_objects %}
+<ul>
+    {% for label, qty in missing_objects.items() %}
+        <li><strong>{{ label }}</strong>: {{ qty }} fehlt/fehlen</li>
+    {% endfor %}
+</ul>
+<p><strong>Achtung:</strong> Diese Leihe wird als „Missing Items“ markiert.</p>
+{% else %}
+<p>Keine fehlenden Gegenstände ✅</p>
+{% endif %}
+
+<hr>
+
+    <button type="submit" class="btn-primary">
+        Rückgabe abschließen
+    </button>
+    <a href="{{ url_for('home') }}" class="btn-secondary" style="margin-left:1rem;">
+        Abbrechen
+    </a>
+</form>
+
+<script>
+let newObjectCounter = 0;
+
+document.getElementById('add-object-btn').addEventListener('click', function() {
+    const label = document.getElementById('new_label').value.trim();
+    const quantity = parseInt(document.getElementById('new_quantity').value) || 1;
+    
+    if (!label) {
+        alert('Bitte geben Sie ein Label ein.');
+        return;
+    }
+    
+    // Eindeutige ID für temporäre Objekte
+    newObjectCounter++;
+    const tempId = 'new_' + newObjectCounter;
+    
+    // Wenn Tabelle noch leer ist, erstelle sie
+    let table = document.querySelector('#return-objects-list table');
+    if (!table) {
+        const noItemsMsg = document.querySelector('#return-objects-list p');
+        if (noItemsMsg) {
+            noItemsMsg.remove();
+        }
+        
+        // Neue Tabelle erstellen
+        const newTable = document.createElement('table');
+        newTable.innerHTML = `
+            <thead>
+                <tr>
+                    <th>Label</th>
+                    <th>Menge</th>
+                    <th>Bearbeitet?</th>
+                    <th>Löschen</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        `;
+        document.querySelector('#return-objects-list').appendChild(newTable);
+        table = newTable;
+    }
+    
+    // Neue Reihe zur Tabelle hinzufügen
+    const tbody = table.querySelector('tbody');
+    const newRow = document.createElement('tr');
+    newRow.id = 'row_' + tempId;
+    newRow.innerHTML = `
+        <td>
+            <input type="text" name="label_${tempId}" value="${label}">
+        </td>
+        <td>
+            <input type="number" name="quantity_${tempId}" value="${quantity}" min="1" step="1">
+        </td>
+        <td>
+            ✅
+        </td>
+        <td>
+            <input type="checkbox" name="delete_${tempId}">
+        </td>
+    `;
+    tbody.appendChild(newRow);
+    
+    // Hidden Input für das Backend hinzufügen (damit beim Submit verarbeitet wird)
+    const form = document.getElementById('objects-form');
+    const hiddenInput = document.createElement('input');
+    hiddenInput.type = 'hidden';
+    hiddenInput.name = 'new_object_label';
+    hiddenInput.value = label;
+    hiddenInput.id = 'hidden_label_' + tempId;
+    form.appendChild(hiddenInput);
+    
+    const hiddenQuantity = document.createElement('input');
+    hiddenQuantity.type = 'hidden';
+    hiddenQuantity.name = 'new_object_quantity';
+    hiddenQuantity.value = quantity;
+    hiddenQuantity.id = 'hidden_qty_' + tempId;
+    form.appendChild(hiddenQuantity);
+    
+    // Eingabefelder zurücksetzen
+    document.getElementById('new_label').value = '';
+    document.getElementById('new_quantity').value = '1';
+});
+
+// Enter-Taste auch für das Label-Feld
+document.getElementById('new_label').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        document.getElementById('add-object-btn').click();
+    }
+});
+</script>
+
+{% endblock %}

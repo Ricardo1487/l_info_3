@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="page-header">
+    <h1 class="page-title">Box erstellt</h1>
+    <p class="page-subtitle">
+      Die Box wurde erfolgreich angelegt. QR-Code ausdrucken, aufkleben – fertig.
+    </p>
+  </div>
+
+  {% if box.loan_id %}
+    <div class="button-row">
+      <button type="button"
+              class="btn-primary full-width"
+              onclick="window.location.href='{{ url_for('upload_photo', loan_id=box.loan_id) }}'">
+        Weiter: Foto für diese Leihe aufnehmen
+      </button>
+    </div>
+  {% endif %}
+
+  <div class="loan-details-container">
+    <div class="loan-info-card">
+      <div class="loan-info-row">
+        <span class="loan-label">Box-Code</span>
+        <span class="loan-value">{{ box.box_code }}</span>
+      </div>
+    </div>
+
+    <div class="loan-info-card">
+      <h2 class="section-title">QR-Code</h2>
+      <p class="page-subtitle">
+        QR-Code scannen → Neue Leihe wird automatisch mit dieser Box gestartet.
+      </p>
+
+      <div class="photo-wrapper">
+        <img
+          src="{{ url_for('get_box_qr', box_code=box.box_code) }}"
+          alt="QR-Code für Box {{ box.box_code }}"
+          class="loan-photo"
+        >
+      </div>
+
+      <div class="button-row">
+        <button type="button" class="btn-primary full-width" onclick="printQR()">
+          QR-Code drucken
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <iframe id="qr-frame" style="display:none;"></iframe>
+
+  <script>
+    function printQR() {
+      const frame = document.getElementById("qr-frame");
+      const qrUrl = "{{ url_for('get_box_qr', box_code=box.box_code) }}";
+
+      frame.src = qrUrl;
+      frame.onload = () => {
+        frame.contentWindow.focus();
+        frame.contentWindow.print();
+      };
+    }
+  </script>
+{% endblock %}

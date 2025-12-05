@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+/* === Benutzerliste mobil sauber machen === */
+
+.table-users {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table-users th,
+.table-users td {
+    padding: 0.6rem 0.8rem;
+}
+
+/* E-Mail kann umbrechen */
+.table-users td[data-label="E-Mail"] {
+    word-break: break-all;
+}
+
+@media (max-width: 768px) {
+
+    /* Tabelle wird im Handyformat zu Karten */
+    .table-users thead {
+        display: none;
+    }
+
+    .table-users,
+    .table-users tbody,
+    .table-users tr,
+    .table-users td {
+        display: block;
+        width: 100%;
+    }
+
+    .table-users tr {
+        margin-bottom: 0.85rem;
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        border-radius: 12px;
+        padding: 0.75rem 1rem;
+        background: rgba(0, 0, 0, 0.1);
+    }
+
+    .table-users td {
+        border: none;
+        padding: 0.35rem 0;
+    }
+
+    .table-users td::before {
+        content: attr(data-label);
+        font-size: 0.8rem;
+        font-weight: 600;
+        opacity: 0.7;
+        display: block;
+        margin-bottom: 0.15rem;
+    }
+
+    /* Aktionen-Bereich sauber untereinander */
+    .table-users td[data-label="Aktionen"] {
+        display: flex;
+        flex-direction: column;     /* Label oben, Button darunter */
+        align-items: flex-start;
+        margin-top: 0.6rem;
+    }
+
+    /* Abstand des Labels "Aktionen" erhöhen */
+    .table-users td[data-label="Aktionen"]::before {
+        margin-bottom: 0.35rem !important;
+    }
+
+    /* Löschen-Button optimal platzieren */
+    .table-users td[data-label="Aktionen"] button {
+        font-size: 0.8rem;
+        padding: 0.45rem 1rem;
+        margin-top: 0.2rem;         /* minimaler Abstand */
+        width: auto;
+        max-width: 100%;
+    }
+}
+</style>
+
+<section class="page-header">
+    <h1 class="page-title">Benutzerverwaltung</h1>
+</section>
+
+<section class="card">
+
+    <table class="table table-users">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>E-Mail</th>
+                <th>Rolle</th>
+                <th>Aktionen</th>
+            </tr>
+        </thead>
+
+        <tbody>
+        {% for u in users %}
+            <tr>
+                <td data-label="Name">{{ u.username }}</td>
+                <td data-label="E-Mail">{{ u.email }}</td>
+                <td data-label="Rolle">{{ u.role }}</td>
+                <td data-label="Aktionen">
+                    <form method="POST" action="{{ url_for('delete_user_route', user_id=u.id) }}"
+                          onsubmit="return confirm('Benutzer wirklich löschen?');">
+                        <button class="btn-danger" type="submit">Löschen</button>
+                    </form>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <a href="{{ url_for('register') }}" class="btn-primary" style="margin-top: 1rem;">
+        Neuen Benutzer anlegen
+    </a>
+</section>
+
+{% endblock %}

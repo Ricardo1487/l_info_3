@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Foto &amp; Inhalt prüfen – Leihe #{{ loan.id }}</h1>
+
+<hr>
+
+<h2>📷 Foto</h2>
+{% if loan.initial_photo %}
+    <img src="{{ loan.initial_photo }}" alt="Foto der Box"
+         style="max-width: 100%; border-radius: 8px; margin-bottom: 1rem;">
+    <p><small>Pfad/URL: {{ loan.initial_photo }}</small></p>
+{% else %}
+    <p>Kein Foto vorhanden.</p>
+{% endif %}
+
+<hr>
+
+<h2>🧾 Erkannte Gegenstände</h2>
+
+<form method="post" id="objects-form">
+    {% if objects %}
+    <table>
+        <thead>
+            <tr>
+                <th>Label</th>
+                <th>Menge</th>
+                <th>Confidence</th>
+                <th>Bearbeitet?</th>
+                <th>Löschen</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for obj in objects %}
+            <tr>
+                <td>
+                    <input type="text" name="label_{{ obj.id }}" value="{{ obj.label }}">
+                </td>
+                <td>
+                    <input type="number" name="quantity_{{ obj.id }}" value="{{ obj.quantity }}" min="1" step="1">
+                </td>
+                <td>
+                    {{ "%.2f"|format(obj.confidence or 0) }}
+                </td>
+                <td>
+                    {% if obj.is_manually_edited %}
+                        ✅
+                    {% else %}
+                        ❌
+                    {% endif %}
+                </td>
+                <td>
+                    <input type="checkbox" name="delete_{{ obj.id }}">
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p style="margin-bottom: 1rem;">Keine erkannten Gegenstände vorhanden.</p>
+    {% endif %}
+
+    <hr style="margin: 1.5rem 0;">
+
+    <h3>➕ Gegenstand hinzufügen</h3>
+    <div style="margin-bottom: 1rem; padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+            <div>
+                <label for="new_label">Label</label>
+                <input type="text" id="new_label" name="new_label" placeholder="z.B. Laptop">
+            </div>
+            <div>
+                <label for="new_quantity">Menge</label>
+                <input type="number" id="new_quantity" name="new_quantity" value="1" min="1" step="1">
+            </div>
+        </div>
+        <button type="button" id="add-object-btn" class="btn-secondary" style="width: 100%;">
+            Hinzufügen
+        </button>
+    </div>
+
+    <hr style="margin: 1.5rem 0;">
+
+    <button type="submit" class="btn-primary" style="margin-top: 1rem;">
+        Änderungen übernehmen &amp; zurück zur Übersicht
+    </button>
+</form>
+
+<script>
+let newObjectCounter = 0;
+
+document.getElementById('add-object-btn').addEventListener('click', function() {
+    const label = document.getElementById('new_label').value.trim();
+    const quantity = parseInt(document.getElementById('new_quantity').value) || 1;
+    
+    if (!label) {
+        alert('Bitte geben Sie ein Label ein.');
+        return;
+    }
+    
+    // Eindeutige ID für temporäre Objekte
+    newObjectCounter++;
+    const tempId = 'new_' + newObjectCounter;
+    
+    // Wenn Tabelle noch leer ist, erstelle sie
+    const table = document.querySelector('#objects-form table');
+    if (!table) {
+        const noItemsMsg = document.querySelector('p:contains("Keine erkannten")');
+        if (noItemsMsg) {
+            noItemsMsg.remove();
+        }
+        
+        // Neue Tabelle erstellen
+        const newTable = document.createElement('table');
+        newTable.innerHTML = `
+            <thead>
+                <tr>
+                    <th>Label</th>
+                    <th>Menge</th>
+                    <th>Confidence</th>
+                    <th>Bearbeitet?</th>
+                    <th>Löschen</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        `;
+        document.querySelector('#objects-form table') ? 
+            document.querySelector('#objects-form table').replaceWith(newTable) : 
+            document.querySelector('#objects-form').insertBefore(newTable, document.querySelector('hr'));
+    }
+    
+    // Neue Reihe zur Tabelle hinzufügen
+    const tbody = document.querySelector('#objects-form table tbody');
+    const newRow = document.createElement('tr');
+    newRow.id = 'row_' + tempId;
+    newRow.innerHTML = `
+        <td>
+            <input type="text" name="label_${tempId}" value="${label}">
+        </td>
+        <td>
+            <input type="number" name="quantity_${tempId}" value="${quantity}" min="1" step="1">
+        </td>
+        <td>
+            —
+        </td>
+        <td>
+            ✅
+        </td>
+        <td>
+            <input type="checkbox" name="delete_${tempId}">
+        </td>
+    `;
+    tbody.appendChild(newRow);
+    
+    // Hidden Input für das Backend hinzufügen (damit beim Submit verarbeitet wird)
+    const form = document.getElementById('objects-form');
+    const hiddenInput = document.createElement('input');
+    hiddenInput.type = 'hidden';
+    hiddenInput.name = 'new_object_label';
+    hiddenInput.value = label;
+    hiddenInput.id = 'hidden_label_' + tempId;
+    form.appendChild(hiddenInput);
+    
+    const hiddenQuantity = document.createElement('input');
+    hiddenQuantity.type = 'hidden';
+    hiddenQuantity.name = 'new_object_quantity';
+    hiddenQuantity.value = quantity;
+    hiddenQuantity.id = 'hidden_qty_' + tempId;
+    form.appendChild(hiddenQuantity);
+    
+    // Eingabefelder zurücksetzen
+    document.getElementById('new_label').value = '';
+    document.getElementById('new_quantity').value = '1';
+});
+
+// Enter-Taste auch für das Label-Feld
+document.getElementById('new_label').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        document.getElementById('add-object-btn').click();
+    }
+});
+</script>
+
+<hr>
+
+<a href="{{ url_for('home') }}" class="btn-secondary">Zurück zur Übersicht</a>
+
+{% endblock %}

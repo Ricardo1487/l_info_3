@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% block content %}
+
+{% if edit_mode %}
+<form method="post" action="{{ url_for('loan_details', loan_id=loan.id, mode='edit') }}">
+{% endif %}
+
+<div class="loan-details-container">
+
+    <h1 class="page-title">Leihe {{ loan.id }}</h1>
+
+    <!-- Oberer Info-Bereich -->
+    <div class="loan-info-card">
+
+        <div class="loan-info-row">
+            <div class="loan-label">Box:</div>
+            <div class="loan-value">{{ loan.box_code }}</div>
+        </div>
+
+        <div class="loan-info-row">
+            <div class="loan-label">Kontakt:</div>
+            <div class="loan-value">
+                {% if edit_mode %}
+                    <input type="email"
+                           name="contact_email"
+                           value="{{ loan.contact_email or '' }}"
+                           style="width: 100%; max-width: 260px;">
+                {% else %}
+                    {{ loan.contact_email }}
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="loan-info-row">
+            <div class="loan-label">Ausgabe:</div>
+            <div class="loan-value">
+                {% if edit_mode %}
+                    <input type="date"
+                           name="planned_start_date"
+                           value="{{ loan.planned_start_date.isoformat() if loan.planned_start_date }}">
+                {% else %}
+                    {{ loan.planned_start_date_formatted }}
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="loan-info-row">
+            <div class="loan-label">Rückgabe geplant:</div>
+            <div class="loan-value">
+                {% if edit_mode %}
+                    <input type="date"
+                           name="planned_end_date"
+                           value="{{ loan.planned_end_date.isoformat() if loan.planned_end_date }}">
+                {% else %}
+                    {{ loan.planned_end_date_formatted }}
+                {% endif %}
+            </div>
+        </div>
+
+        {% set today = date.today() %}
+        {% if loan.planned_start_date and loan.planned_start_date > today %}
+            {% set display_status = "UPCOMING" %}
+        {% else %}
+            {% set display_status = loan.status %}
+        {% endif %}
+        <div class="loan-info-row">
+            <div class="loan-label">Status:</div>
+            <div class="loan-value">
+                <span class="status-badge status-{{ display_status|lower }}">
+                    {{ display_status|lower|replace("_", " ") }}
+                </span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ============================= -->
+    <!--   VERTIKALE INHALTSANZEIGE    -->
+    <!-- ============================= -->
+    <h2 class="section-title">Inhalt der Box</h2>
+
+    <div class="content-columns">
+
+        <!-- INITIAL -->
+        <div class="content-box">
+            <h3 class="content-title">
+                <span style="color:#2ecc71;">●</span> AUSGABE
+            </h3>
+
+            {% if initial_objects %}
+                <ul>
+                    {% for label, qty in initial_objects.items() %}
+                        <li>{{ label }}: {{ qty }}</li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>Keine Daten vorhanden.</p>
+            {% endif %}
+        </div>
+
+
+        <!-- RETURN -->
+        <div class="content-box">
+            <h3 class="content-title">
+                <span style="color:#3498db;">●</span> RÜCKGABE
+            </h3>
+
+            {% if return_objects %}
+                <ul>
+                    {% for label, qty in return_objects.items() %}
+                        <li>{{ label }}: {{ qty }}</li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>Noch kein Rückgabefoto.</p>
+            {% endif %}
+        </div>
+
+        <!-- MISSING -->
+        <div class="content-box">
+            <h3 class="content-title">
+                <span style="color:#e74c3c;">●</span> FEHLENDE ITEMS
+            </h3>
+
+            {% if missing_objects %}
+                <ul>
+                    {% for label, qty in missing_objects.items() %}
+                        <li>{{ label }}: {{ qty }} </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>Keine fehlenden Gegenstände.</p>
+            {% endif %}
+        </div>
+
+    </div>
+
+{# ===================== #
+ #   FOTO-BEREICH        #
+ # ===================== #}
+
+{% if loan.initial_photo or loan.return_photo %}
+    <h2 class="section-title">Fotos</h2>
+
+    <button
+        type="button"
+        class="photo-toggle-btn"
+        onclick="togglePhotos()"
+    >
+        📷 Fotos anzeigen
+    </button>
+
+    <div id="photo-dropdown" class="photo-dropdown">
+
+        {% if loan.initial_photo %}
+        <div class="photo-wrapper">
+            <h3 class="photo-subtitle">AUSGABE</h3>
+            <img src="{{ loan.initial_photo }}" alt="Ausgabe-Foto der Box" class="loan-photo">
+        </div>
+        {% endif %}
+
+        {% if loan.return_photo %}
+        <div class="photo-wrapper">
+            <h3 class="photo-subtitle">RÜCKGABE</h3>
+            <img src="{{ loan.return_photo }}" alt="Rückgabe-Foto der Box" class="loan-photo">
+        </div>
+        {% endif %}
+
+    </div>
+
+    <script>
+        function togglePhotos() {
+            const box = document.getElementById('photo-dropdown');
+            if (box) {
+                box.classList.toggle('open');
+            }
+        }
+    </script>
+
+{% else %}
+    <h2 class="section-title">Fotos</h2>
+    <p class="no-photo-hint">Keine Fotos vorhanden.</p>
+{% endif %}
+
+    <!-- Buttons -->
+    {% if edit_mode %}
+        <div class="button-row">
+            <button type="submit" class="btn-primary">Änderungen speichern</button>
+            <a href="{{ url_for('loan_details', loan_id=loan.id) }}" class="btn-secondary">Abbrechen</a>
+        </div>
+    {% else %}
+        <div class="button-row">
+            <a href="{{ url_for('home') }}" class="btn-secondary">Zurück</a>
+
+            <a href="{{ url_for('loan_details', loan_id=loan.id, mode='edit') }}" class="btn-secondary">
+                Bearbeiten
+            </a>
+
+            {% if loan.status == "OPEN" %}
+                <a href="{{ url_for('return_box', loan_id=loan.id) }}" class="btn-primary">
+                    Rückgabe starten
+                </a>
+            {% endif %}
+            
+            <form method="post" action="{{ url_for('delete_loan_route', loan_id=loan.id) }}" style="display: inline;" onsubmit="return confirm('Möchtest du diese Leihe wirklich löschen?');">
+                <button type="submit" class="btn-danger" style="background-color: #e74c3c; border-color: #c0392b;">
+                    🗑️ Löschen
+                </button>
+            </form>
+        </div>
+    {% endif %}
+</div>
+
+{% if edit_mode %}
+</form>
+{% endif %}
+
+{% endblock %}

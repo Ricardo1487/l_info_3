@@ -19,11 +19,10 @@ DATABASE_URL = (
 
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"sslmode": "require"},
     pool_pre_ping=True,
     pool_recycle=300,
-    pool_size=5,
-    max_overflow=10
+    pool_size=2,      # kleiner Pool wegen Supabase-Limit
+    max_overflow=0,   # keine zusätzlichen Verbindungen über pool_size hinaus
 )
 
 SessionLocal = sessionmaker(
@@ -31,3 +30,5 @@ SessionLocal = sessionmaker(
     autoflush=False,
     autocommit=False
 )
+
+

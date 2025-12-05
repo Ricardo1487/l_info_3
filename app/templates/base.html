@@ -24,34 +24,111 @@
     </div>
 
     <div class="nav-right">
-        <nav class="nav-links">
+    <nav class="nav-links">
+        {% if session.get("user_id") %}
             <a href="{{ url_for('home') }}" class="nav-link">Übersicht</a>
             <a href="{{ url_for('new_loan') }}" class="nav-link nav-link-primary">Neue Leihe</a>
-        </nav>
+            <a href="{{ url_for('boxes_overview') }}" class="nav-link">Boxen Übersicht</a>
+            <a href="{{ url_for('change_password_route') }}" class="nav-link">Passwort ändern</a>
 
-        <!-- Theme Toggle: Mountain ⇄ Forest -->
-        <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Theme wechseln">
-            <span id="theme-toggle-label">M</span>
-        </button>
+            {% if session.get("user_role") == "ADMIN" %}
+                <a href="{{ url_for('user_list') }}" class="nav-link">Benutzer Übersicht</a>
+            {% endif %}
+
+            <span class="nav-link">
+                {{ session.get("user_name") }} ({{ session.get("user_role") }})
+            </span>
+            <a href="{{ url_for('logout') }}" class="nav-link nav-link-primary">Logout</a>
+        {% else %}
+            <a href="{{ url_for('login') }}" class="nav-link nav-link-primary">Login</a>
+        {% endif %}
+    </nav>
+
+    <!-- MOBILE-ONLY BUTTONS -->
+    <div class="mobile-header-actions">
+
+    <div class="mobile-action-wrapper">
+        <a href="{{ url_for('change_password_route') }}" class="icon-button" title="Passwort ändern">🔑</a>
+        <span class="mobile-action-label">Passwort</span>
     </div>
+
+    <div class="mobile-action-wrapper">
+        <a href="{{ url_for('logout') }}" class="icon-button" title="Logout">🚪</a>
+        <span class="mobile-action-label">Logout</span>
+    </div>
+
+</div>
+
+
+
+
+
+
+    <!-- Theme Toggle Mountain-> Forest-->
+    <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Theme wechseln">
+        <span id="theme-toggle-label">☀️</span>
+    </button>
+</div>
+
 </header>
 
 <!-- Hauptinhalt -->
 <main class="app-main">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-container">
+          {% for category, message in messages %}
+            <div class="alert-{{ category }}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
     {% block content %}{% endblock %}
 </main>
 
 <!-- Bottom Navigation (nur Mobile) -->
 <nav class="bottom-nav">
-    <a href="{{ url_for('home') }}" class="bottom-nav-item">
-        <span class="bottom-nav-icon">🏠</span>
-        <span class="bottom-nav-label">Übersicht</span>
-    </a>
-    <a href="{{ url_for('new_loan') }}" class="bottom-nav-item">
-        <span class="bottom-nav-icon">➕</span>
-        <span class="bottom-nav-label">Neu</span>
-    </a>
+
+    {% if session.get("user_id") %}
+
+        <!-- Übersicht -->
+        <a href="{{ url_for('home') }}" class="bottom-nav-item">
+            <span class="bottom-nav-icon">🏠</span>
+            <span class="bottom-nav-label">Übersicht</span>
+        </a>
+
+        <!-- Neue Leihe -->
+        <a href="{{ url_for('new_loan') }}" class="bottom-nav-item">
+            <span class="bottom-nav-icon">➕</span>
+            <span class="bottom-nav-label">Neu</span>
+        </a>
+
+
+
+        {% if session.get("user_role") == "ADMIN" %}
+            <!-- Benutzerverwaltung -->
+            <a href="{{ url_for('user_list') }}" class="bottom-nav-item">
+                <span class="bottom-nav-icon">👥</span>
+                <span class="bottom-nav-label">Benutzer</span>
+            </a>
+
+        {% endif %}
+
+    {% else %}
+
+        <!-- Nicht eingeloggt -->
+        <a href="{{ url_for('login') }}" class="bottom-nav-item">
+            <span class="bottom-nav-icon">🔐</span>
+            <span class="bottom-nav-label">Login</span>
+        </a>
+
+    {% endif %}
+
 </nav>
+
 
 <!-- Theme Switch Script -->
 <script>
@@ -66,7 +143,7 @@
         html.setAttribute("data-theme", theme);
         localStorage.setItem("theme", theme);
         if (label) {
-            label.textContent = theme === "themeMountain" ? "M" : "F";
+            label.textContent = theme === "themeMountain" ? "☀️" : "🌙";
         }
     }
 
