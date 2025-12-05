@@ -12,10 +12,11 @@ Web-Applikation zur Verwaltung von Boxen, Leihvorgängen, Nutzern und KI-basiert
 5. Projektstruktur
 6. Installation
 7. Deployment
-8. Tests
-9. KI-Bildanalyse (OpenAI Vision)
-10. E-Mail Mock-System
-11. Team
+8. Datenbank
+9. Tests
+10. KI-Bildanalyse (OpenAI Vision)
+11. E-Mail Mock-System
+12. Team
 ----
 ### 1. Projektüberblick
 
@@ -94,6 +95,7 @@ Die Anwendung ist in drei Ebenen gegliedert:
 
 #### 2. Service Layer
 - boxes.py
+- email_mock.py
 - loans.py
 - loan_status.py
 - users.py
@@ -115,11 +117,12 @@ Die Anwendung ist in drei Ebenen gegliedert:
 |  |  +- database.py
 |  |  +- image_analysis.py
 |  |
-|  +- services/
++- services/
 |  |  +- boxes.py
-|  |  +- loans.py
+|  |  +- email_mock.py
 |  |  +- loan_status.py
 |  |  +- loan_views.py
+|  |  +- loans.py
 |  |  +- photos_storage.py
 |  |  +- users.py
 |  |
@@ -144,6 +147,7 @@ Die Anwendung ist in drei Ebenen gegliedert:
 |  +- Service-Tests (Boxen, Leihen, Nutzer)
 |  +- Datenbank- und Konfigurations-Tests
 |  +- KI-/Bildanalyse-Tests
+|  +- E-Mail-Mock-Tests (simulierte Benachrichtigungen)
 |  +- Web-Routing-Tests
 |
 +- .github/
@@ -163,7 +167,7 @@ Die Anwendung ist in drei Ebenen gegliedert:
 1. **Repository klonen**
 
     ```bash
-    git clone <dein-repo-url>
+    git clone <https://github.com/Ricardo1487/l_info_3>
     cd boxenverwaltung
     ```
 
@@ -199,17 +203,30 @@ Die Anwendung ist in drei Ebenen gegliedert:
 
 6. **Environment-Variablen ausfüllen**
 
-    ```text
-    SUPABASE_URL=
-    SUPABASE_SERVICE_KEY=
-    SUPABASE_BUCKET=photos
+```text
+# Datenbank
+DATABASE_USER=
+DATABASE_PASSWORD=
+DATABASE_HOST=
+DATABASE_PORT=
+DATABASE_NAME=
 
-    OPENAI_API_KEY=
+# Supabase Storage
+SUPABASE_URL=
+SUPABASE_SERVICE_KEY=
+SUPABASE_BUCKET=
 
-    DATABASE_URL=
+# KI / Bildanalyse
+OPENAI_API_KEY=
 
-    FLASK_SECRET_KEY=
-    ```
+# Flask Konfiguration
+FLASK_ENV=           
+FLASK_DEBUG=        
+
+# Öffentliche Basis-URL der Anwendung 
+PUBLIC_BASE_URL=
+```
+
 
 7. **Datenbank initialisieren (optional für lokale Nutzung)**
 
@@ -237,8 +254,14 @@ Deployment-URL:
 <https://l-info-3.onrender.com>
 
 -----
+### 8. Datenbank
+Die Anwendung nutzt eine relationale PostgreSQL-Datenbank über Supabase.  
+Die wichtigsten Tabellen und ihre Beziehungen sind im folgenden Schema dargestellt:
 
-### 8. Tests
+![img.png](img.png)
+
+---------
+### 9. Tests
 
 **Tests ausführen**
 
@@ -257,7 +280,7 @@ Deployment-URL:
 - Aufruf und Verhalten wichtiger Seiten  
 
 ----
-### 9. KI-Bildanalyse (OpenAI Vision)
+### 10. KI-Bildanalyse (OpenAI Vision)
 
 Die Anwendung nutzt ein Vision-fähiges KI-Modell über die OpenAI-Schnittstelle, um hochgeladene Fotos auszuwerten.
 Das Modell liefert eine strukturierte Liste erkannter Gegenstände zurück,
@@ -275,7 +298,7 @@ Diese erkannten Objekte werden beim Rückgabeprozess automatisch
 mit dem Initialfoto verglichen, um fehlende Gegenstände zu erkennen.
 
 ----
-### 10. E-Mail Mock-System
+### 11. E-Mail Mock-System
 
 Gemäß Aufgabenstellung wird die geplante E-Mail-Funktion noch nicht real implementiert, sondern über ein Mock-System simuliert.
 Dieses System dient dazu, den späteren Funktionsumfang vorzubereiten, ohne echte Nachrichten zu versenden.
@@ -288,12 +311,12 @@ Das Mock-System:
 
 ----
 
-### 11. Team
+### 12. Team
 | Name                 | Rolle                                         |
 |----------------------|-----------------------------------------------|
 | **Benli, Semih**     | QR-Code-Funktionalität, Boxenübersicht        |
 | **Gießler, Ricardo** | API-Anbindung und technische Schnittstellen   |
-| **Grosser, Ben**     | Entwicklung der zentralen Services (Kernlogik) |
-| **Jerke, Julia**     | Adminfunktionen und Authentifizierung, CI-Integration
+| **Grosser, Ben**     | Entwicklung der zentralen Services (Kernlogik), Datenbank
+| **Jerke, Julia**     | Adminfunktionen und Authentifizierung, E-Mail Mock
 | **Scheer, Leonardo** | Frontend, UI-Design, Server-Deployment        |
-| **Stöber, Noah**     | Testentwicklung, Filterfunktion, E-Mail Mock
+| **Stöber, Noah**     | Testentwicklung, Filterfunktion, Überfälligkeits-Log
