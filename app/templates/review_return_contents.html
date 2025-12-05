@@ -21,6 +21,10 @@
         {% if loan.return_photo %}
             <img src="{{ loan.return_photo }}" alt="Rückgabe-Foto"
                  style="max-width:300px; border-radius:8px;">
+            <br><br>
+            <a href="{{ url_for('change_return_photo', loan_id=loan.id) }}" class="btn-secondary">
+                📷 Foto ändern
+            </a>
         {% else %}
             <p>Kein Rückgabe-Foto vorhanden.</p>
         {% endif %}

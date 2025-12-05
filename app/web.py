@@ -1280,6 +1280,114 @@ def review_return_contents(loan_id: int):
     )
 
 # ---------------------------------------------------
+# Rückgabe-Foto ersetzen
+# ---------------------------------------------------
+@app.route("/loan/<int:loan_id>/change-return-photo", methods=["GET", "POST"])
+@login_required
+def change_return_photo(loan_id: int):
+    loan = get_loan_by_id(loan_id)
+    if loan is None:
+        abort(404, "Leihe nicht gefunden.")
+
+    if request.method == "POST":
+        photo = request.files.get("photo")
+        if not photo:
+            abort(400, "Foto fehlt.")
+
+        # Bild mit KI analysieren (Inhalt bei Rückgabe erkennen)
+        try:
+            analysis = analyze_image_file(photo)
+            print("RETURN ANALYSIS (CHANGE):", analysis)
+            detected_objects = analysis.get("objects", [])
+            print("RETURN OBJECTS (CHANGE):", detected_objects)
+        except Exception as e:
+            print("Fehler bei der Rückgabe-Bildanalyse:", e)
+            detected_objects = []
+
+        # Foto nach Supabase hochladen
+        bucket_key = upload_return_photo_for_loan(loan_id, photo)
+
+        # Löschen des alten RETURN-Fotos und dessen erkannten Objekte
+        with SessionLocal() as session:
+            # Alte Fotos und Objekte löschen
+            old_photo = session.execute(
+                text(
+                    """
+                    SELECT id
+                    FROM photos
+                    WHERE loan_id = :loan_id AND type = 'RETURN'
+                    ORDER BY id DESC
+                    LIMIT 1
+                    """
+                ),
+                {"loan_id": loan_id},
+            ).mappings().first()
+
+            if old_photo:
+                old_photo_id = old_photo["id"]
+                # Löschen der erkannten Objekte des alten Fotos
+                session.execute(
+                    text(
+                        """
+                        DELETE FROM detected_objects
+                        WHERE photo_id = :photo_id
+                        """
+                    ),
+                    {"photo_id": old_photo_id},
+                )
+                # Löschen des alten Fotos
+                session.execute(
+                    text(
+                        """
+                        DELETE FROM photos
+                        WHERE id = :photo_id
+                        """
+                    ),
+                    {"photo_id": old_photo_id},
+                )
+
+            # Neues Foto hinzufügen
+            result = session.execute(
+                text("""
+                    INSERT INTO photos (loan_id, type, file_path)
+                    VALUES (:loan_id, 'RETURN', :file_path)
+                    RETURNING id
+                """),
+                {
+                    "loan_id": loan_id,
+                    "file_path": bucket_key,
+                }
+            )
+            photo_id = result.scalar_one()
+
+            # Neue erkannte Objekte speichern
+            for obj in detected_objects:
+                session.execute(
+                    text("""
+                        INSERT INTO detected_objects (photo_id, label, confidence, quantity, is_manually_edited)
+                        VALUES (:photo_id, :label, :confidence, :quantity, false)
+                    """),
+                    {
+                        "photo_id": photo_id,
+                        "label": obj.get("label"),
+                        "confidence": obj.get("confidence"),
+                        "quantity": obj.get("quantity", 1),
+                    }
+                )
+
+            session.commit()
+
+        # Nach dem Upload zur Rückgabe-Review-Seite zurückkehren
+        return redirect(url_for("review_return_contents", loan_id=loan_id))
+
+    # GET: Formular zum Rückgabe-Foto ändern anzeigen
+    return render_template(
+        "upload_photo.html",
+        title="Rückgabe-Foto ändern",
+        loan=loan,
+    )
+
+# ---------------------------------------------------
 # Leihe löschen
 # ---------------------------------------------------
 @app.route("/loan/<int:loan_id>/delete", methods=["POST"])
