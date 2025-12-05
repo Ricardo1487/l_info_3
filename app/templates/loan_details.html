@@ -135,27 +135,53 @@
 
     </div>
 
-    <!-- Foto -->
-    {% if loan.initial_photo %}
-    <h2 class="section-title">Erstes Foto</h2>
+{# ===================== #
+ #   FOTO-BEREICH        #
+ # ===================== #}
 
-    <button class="photo-toggle-btn" onclick="togglePhoto()">📷 Foto anzeigen</button>
+{% if loan.initial_photo or loan.return_photo %}
+    <h2 class="section-title">Fotos</h2>
+
+    <button
+        type="button"
+        class="photo-toggle-btn"
+        onclick="togglePhotos()"
+    >
+        📷 Fotos anzeigen
+    </button>
 
     <div id="photo-dropdown" class="photo-dropdown">
-        <img src="{{ loan.initial_photo }}" alt="Foto der Box" class="loan-photo">
+
+        {% if loan.initial_photo %}
+        <div class="photo-wrapper">
+            <h3 class="photo-subtitle">AUSGABE</h3>
+            <img src="{{ loan.initial_photo }}" alt="Ausgabe-Foto der Box" class="loan-photo">
+        </div>
+        {% endif %}
+
+        {% if loan.return_photo %}
+        <div class="photo-wrapper">
+            <h3 class="photo-subtitle">RÜCKGABE</h3>
+            <img src="{{ loan.return_photo }}" alt="Rückgabe-Foto der Box" class="loan-photo">
+        </div>
+        {% endif %}
+
     </div>
 
     <script>
-        function togglePhoto() {
+        function togglePhotos() {
             const box = document.getElementById('photo-dropdown');
-            box.classList.toggle('open');
+            if (box) {
+                box.classList.toggle('open');
+            }
         }
     </script>
 
-    {% else %}
-    <h2 class="section-title">Erstes Foto</h2>
-    <p class="no-photo-hint">Kein Foto vorhanden.</p>
-    {% endif %}
+{% else %}
+    <h2 class="section-title">Fotos</h2>
+    <p class="no-photo-hint">Keine Fotos vorhanden.</p>
+{% endif %}
+
     <!-- Buttons -->
     {% if edit_mode %}
         <div class="button-row">

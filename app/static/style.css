@@ -1090,7 +1090,7 @@ html[data-theme="themeForest"] .filter-button-reset:hover {
 }
 
 .photo-dropdown.open {
-  max-height: 800px;
+  max-height: none;
   margin-top: 0.7rem;
 }
 
@@ -1216,4 +1216,22 @@ html[data-theme="themeForest"] .filter-button-reset:hover {
     margin-top: 2px;
     font-weight: 600;
     opacity: 0.9;
+}
+
+.photo-subtitle {
+    text-align: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-soft);
+    margin-bottom: 0.5rem;
+}
+
+.photo-wrapper {
+  display: flex;
+  flex-direction: column;    /* untereinander statt nebeneinander */
+  align-items: center;       /* zentriert */
+  gap: 0.5rem;               /* Abstand zwischen Titel und Bild */
+  padding: 0.6rem;
 }
