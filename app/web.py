@@ -822,12 +822,8 @@ def return_box(loan_id: int):
         abort(404, "Leihe nicht gefunden.")
 
     if request.method == "POST":
-        return_loan(
-            loan_id=loan_id,
-            actual_end_date=date.today(),
-            closed_by_user_id=2
-        )
-        return redirect(url_for("home"))
+        # Keine automatische Statusänderung hier — nur zum Rückgabe-Foto weiterleiten
+        return redirect(url_for("upload_return_photo", loan_id=loan_id))
 
     # GET: Direkt in den neuen Rückgabe-Foto-Flow verzweigen
     return redirect(url_for("upload_return_photo", loan_id=loan_id))
@@ -1030,7 +1026,7 @@ def review_initial_contents(loan_id: int):
             # Get all new object labels and quantities (can be multiple)
             new_labels = request.form.getlist("new_object_label")
             new_quantities = request.form.getlist("new_object_quantity")
-            
+
             for i, new_label in enumerate(new_labels):
                 new_label = new_label.strip()
                 if new_label:
@@ -1186,7 +1182,7 @@ def review_return_contents(loan_id: int):
                 # Handle new objects added by the user
                 new_labels = request.form.getlist("new_object_label")
                 new_quantities = request.form.getlist("new_object_quantity")
-                
+
                 for i, new_label in enumerate(new_labels):
                     new_label = new_label.strip()
                     if new_label:
@@ -1215,7 +1211,7 @@ def review_return_contents(loan_id: int):
         print(return_photo)
         initial_objects = get_detected_objects_for_photo(session, loan_id, "INITIAL")
         returned_objects = get_detected_objects_for_photo(session, loan_id, "RETURN")
-        
+
         # Get list of return objects for editing in template
         returned_objects_list = session.execute(
             text(
@@ -1231,7 +1227,7 @@ def review_return_contents(loan_id: int):
             ),
             {"loan_id": loan_id},
         ).mappings().all()
-        
+
         missing_objects = compare_object_sets(initial_objects, returned_objects)
 
         if request.method == "POST":
@@ -1239,19 +1235,20 @@ def review_return_contents(loan_id: int):
 
             # Wenn etwas fehlt → Missing Items markieren, sonst ggf. Loan aufräumen
             try:
+                from flask import session as flask_session
                 if missing_objects:
                     # 🔴 Es fehlen Teile → Leihe als MISSING_ITEMS abschließen
                     return_with_missing_items(
                         loan_id=loan_id,
                         actual_end_date=today,
-                        closed_by_user_id=user_id,
+                        closed_by_user_id=flask_session["user_id"],
                     )
                 else:
                     # ✅ Alles da → Leihe als RETURNED markieren
                     return_loan(
                         loan_id=loan_id,
                         actual_end_date=today,
-                        closed_by_user_id=user_id,
+                        closed_by_user_id=flask_session["user_id"],
                     )
 
                     # Nur löschen, wenn Rückgabedatum älter als 7 Tage ist

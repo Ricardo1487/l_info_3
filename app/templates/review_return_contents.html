@@ -62,10 +62,10 @@
                     {% for obj in returned_objects_list %}
                     <tr>
                         <td>
-                            <input type="text" name="label_{{ obj.id }}" value="{{ obj.label }}">
+                            <input type="text" name="label_{{ obj.id }}" value="{{ obj.label }}" style="width: 150px;">
                         </td>
                         <td>
-                            <input type="number" name="quantity_{{ obj.id }}" value="{{ obj.quantity }}" min="1" step="1">
+                            <input type="number" name="quantity_{{ obj.id }}" value="{{ obj.quantity }}" min="1" step="1" style="width: 60px;">
                         </td>
                         <td>
                             {% if obj.is_manually_edited %}

@@ -28,10 +28,12 @@ def list_loans() -> List[Dict[str, Any]]:
                 l.planned_start_date,
                 l.planned_end_date,
                 l.actual_end_date,
-                b.box_code
+                b.box_code,
+                u.email AS created_by_email
             FROM loans l
             JOIN boxes b ON l.box_id = b.id
-            WHERE l.status IN ('OPEN', 'OVERDUE', 'MISSING_ITEMS', 'RETURNED')
+            LEFT JOIN users u ON u.id = l.created_by_user_id
+            WHERE l.status IN ('OPEN', 'UPCOMING', 'OVERDUE', 'MISSING_ITEMS', 'RETURNED')
             ORDER BY l.planned_end_date ASC
         """)).mappings().all()
 
@@ -49,9 +51,11 @@ def get_loan_by_id(loan_id: int) -> Optional[Dict[str, Any]]:
             text("""
                 SELECT
                     l.*,
-                    b.box_code
+                    b.box_code,
+                    u.email AS created_by_email
                 FROM loans l
                 JOIN boxes b ON l.box_id = b.id
+                LEFT JOIN users u ON u.id = l.created_by_user_id
                 WHERE l.id = :loan_id
             """),
             {"loan_id": loan_id}
