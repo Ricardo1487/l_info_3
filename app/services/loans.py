@@ -27,7 +27,6 @@ def list_loans() -> List[Dict[str, Any]]:
                 l.status,
                 l.planned_start_date,
                 l.planned_end_date,
-                l.actual_start_date,
                 l.actual_end_date,
                 b.box_code
             FROM loans l
