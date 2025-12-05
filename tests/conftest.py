@@ -1,7 +1,12 @@
-# tests/conftest.py
 import os
 import sys
 import types
+from pathlib import Path
+
+# Projektwurzel zum Python-Pfad hinzufügen
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 # Dummy-Umgebungsvariablen für Supabase, damit photos_storage beim Import
 # KEIN RuntimeError wirft.
